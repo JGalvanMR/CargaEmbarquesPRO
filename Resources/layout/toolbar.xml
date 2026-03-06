@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Toolbar
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/toolbar"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="?android:attr/actionBarSize"
+    android:titleTextColor="#ffffff"
+    android:subtitleTextColor="#ffffff"
+    android:background="@drawable/bg_toolbar"
+    android:paddingRight="5dp"/>

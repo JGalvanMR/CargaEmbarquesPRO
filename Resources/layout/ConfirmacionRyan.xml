@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AbsoluteLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:xct="http://xamarin.com/schemas/2020/toolkit"
+    android:orientation="vertical"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:stretchColumns="*"
+    android:elevation="0dp"
+    android:layout_centerInParent="true">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/rounded_login_ui"
+        android:backgroundTint="#ffffff"
+        android:orientation="vertical"
+        android:padding="10dp"
+        android:layout_marginStart="1dp"
+        android:layout_marginLeft="1dp"
+        android:layout_marginEnd="1dp"
+        android:layout_marginRight="1dp">
+
+        <TextView
+            android:textColor="#000000"
+            android:text="CONFIRMACÓN DE RYAN"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minWidth="25px"
+            android:minHeight="25px"
+            android:textAlignment="center"
+            android:layout_alignParentTop="true"
+            android:layout_gravity="center_horizontal"
+            android:textStyle="bold"
+            android:padding="7dp"/>
+
+        <TextView
+            android:text="Ryan 1:"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#000000"/>
+        <EditText
+            android:id="@+id/TXTRYAN01"
+            android:inputType="text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#000000"/>
+
+        <TextView
+            android:text="Posición Ryan 1:"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#000000"/>
+        <EditText
+            android:id="@+id/TxtPosR01"
+            android:inputType="number"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#000000"/>
+
+        <TextView
+            android:text="Ryan 2:"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#000000"/>
+        <EditText
+            android:id="@+id/TXTRYAN02"
+            android:inputType="text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#000000"/>
+
+
+        <TextView
+            android:text="Posición Ryan 2:"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#000000"/>
+        <EditText
+            android:id="@+id/TxtPosR02"
+            android:inputType="number"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#000000"/>
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:layout_gravity="center_horizontal"
+            android:padding="10dp">
+            <Button
+                android:layout_margin="7dp"
+                android:id="@+id/ContinuarRYAN"
+                android:text="GUARDAR"
+                android:layout_weight="1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/buttoncargarenabled"
+                android:textColor="#ffffff"
+                android:elevation="2dp"
+                android:textAlignment="center"
+                android:autoSizeTextType="uniform"/>
+            <Button
+                android:layout_margin="7dp"
+                android:id="@+id/CancelarRYAN"
+                android:text="CANCELAR"
+                android:layout_weight="1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/buttoncancelarenabled"
+                android:textColor="#ffffff"
+                android:elevation="2dp"
+                android:textAlignment="center"
+                android:autoSizeTextType="uniform"/>
+        </LinearLayout>
+    </LinearLayout>
+</AbsoluteLayout>

@@ -1,0 +1,7 @@
+﻿[*.cs]
+
+# CS0672: El miembro invalida los miembros obsoletos
+dotnet_diagnostic.CS0672.severity = none
+
+# CS0618: El tipo o el miembro están obsoletos
+dotnet_diagnostic.CS0618.severity = none

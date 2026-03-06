@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+	android:orientation="vertical"
+    android:padding="12dp"
+    android:layout_margin="8dp"
+    android:background="@drawable/bg_neumorph_light"
+    android:elevation="3dp"
+    android:gravity="center_horizontal">
+
+	<ImageView
+        android:id="@+id/imgPers"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginBottom="8dp"
+		android:src="@drawable/producto"
+        android:scaleType="centerInside"
+		android:background="@drawable/bg_neumorph_light"
+        android:padding="6dp" />
+
+	<LinearLayout
+        android:id="@+id/linearLayout1"
+		android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
+
+		<TextView
+            android:id="@+id/txtName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nombre del producto"
+            android:textColor="#444"
+            android:textSize="9pt"
+            android:paddingBottom="4dp"/>
+
+		<TextView
+            android:id="@+id/txtAge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Peso: 123 kg"
+            android:textColor="#666"
+            android:textSize="7.3pt"/>
+	</LinearLayout>
+</LinearLayout>

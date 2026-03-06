@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+	<include
+		android:id="@+id/toolbar"
+		layout="@layout/toolbar" />
+
+	<TextView
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:text="PESO DE LA ULTIMA TARIMA"
+		android:textStyle="bold"
+		android:textSize="16sp"
+		android:background="#f8f9fa"
+		android:textColor="#000000"
+		android:padding="8dp"
+		android:gravity="center" />
+
+	<!--ITEM PARA MOSTRAR EL PESO DE LA TARIMA RECIEN LEIDA-->
+	<LinearLayout
+			android:id="@+id/LLPesosXTarima"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:orientation="horizontal"
+			android:gravity="center"
+			android:padding="5dp">
+		<LinearLayout
+			android:id="@+id/LLPesosXTarimaBG"
+			android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:padding="12dp"
+            android:layout_margin="8dp"
+			android:background="@drawable/bg_neumorph_light"
+			android:elevation="3dp"
+			android:gravity="center">
+
+			<ImageView
+				android:id="@+id/imgTarima"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				android:layout_marginBottom="8dp"
+				android:src="@drawable/producto"
+				android:scaleType="centerInside"
+				android:background="@drawable/bg_neumorph_light"
+				android:padding="6dp" />
+
+			<LinearLayout
+				android:id="@+id/LLDatosTarima"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				android:orientation="vertical"
+				android:gravity="center">
+
+				<TextView
+					android:id="@+id/txtNameTarima"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="Nombre del producto"
+					android:textColor="#444"
+					android:textSize="16sp"
+					android:paddingBottom="4dp"/>
+
+				<TextView
+					android:id="@+id/txtAgePesoTarima"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="Peso: 0.00 kg"
+					android:textColor="#212529"
+					android:textSize="20sp"/>
+			</LinearLayout>
+		</LinearLayout>
+	</LinearLayout>
+
+
+	<TextView
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:text="PESO POR EJES"
+		android:textStyle="bold"
+		android:textSize="16sp"
+		android:background="#D0D0D0"
+		android:textColor="#000000"
+		android:padding="8dp"
+		android:gravity="center" />
+
+	<!--ITEMS PARA MOSTRAR EL PESO POR EJES DEL TRAILER-->
+	<ScrollView
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:scrollbarAlwaysDrawVerticalTrack="true">
+		<LinearLayout
+			android:id="@+id/LLPesosXEjes"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:orientation="horizontal"
+			android:gravity="center"
+			android:padding="5dp">
+			<LinearLayout
+				android:id="@+id/LLPesosXEjesBG1"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				android:orientation="vertical"
+				android:padding="12dp"
+				android:layout_margin="8dp"
+				android:background="@drawable/bg_neumorph_light"
+				android:elevation="3dp"
+				android:gravity="center">
+
+				<ImageView
+					android:id="@+id/imgPersUNO"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_marginBottom="8dp"
+					android:src="@drawable/pesoeje1"
+					android:scaleType="centerInside"
+					android:background="@drawable/bg_neumorph_light"
+					android:padding="6dp" />
+
+				<LinearLayout
+					android:id="@+id/linearLayout1UNO"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical"
+					android:gravity="center">
+
+					<TextView
+						android:id="@+id/txtNameUNO"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="PESO EJE NUMERO 1:"
+						android:textColor="#444"
+						android:textSize="16sp"
+						android:paddingBottom="4dp"/>
+
+					<TextView
+						android:id="@+id/txtAgeUNO"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="Peso: 0.00 kg"
+						android:textColor="#212529"
+						android:textSize="20sp"/>
+				</LinearLayout>
+			</LinearLayout>
+			<LinearLayout
+				android:id="@+id/LLPesosXEjesBG2"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				android:orientation="vertical"
+				android:padding="12dp"
+				android:layout_margin="8dp"
+				android:background="@drawable/bg_neumorph_light"
+				android:elevation="3dp"
+				android:gravity="center">
+
+				<ImageView
+					android:id="@+id/imgPersDOS"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_marginBottom="8dp"
+					android:src="@drawable/pesoeje23"
+					android:scaleType="centerInside"
+					android:background="@drawable/bg_neumorph_light"
+					android:padding="6dp" />
+
+				<LinearLayout
+					android:id="@+id/linearLayout1DOS"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical"
+					android:gravity="center">
+
+					<TextView
+						android:id="@+id/txtNameDOS"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="PESO EJE NUMERO 2:"
+						android:textColor="#444"
+						android:textSize="16sp"
+						android:paddingBottom="4dp"/>
+
+					<TextView
+						android:id="@+id/txtAgeDOS"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="Peso: 0.00 kg"
+						android:textColor="#212529"
+						android:textSize="20sp"/>
+				</LinearLayout>
+			</LinearLayout>
+			<LinearLayout
+				android:id="@+id/LLPesosXEjesBG3"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				android:orientation="vertical"
+				android:padding="12dp"
+				android:layout_margin="8dp"
+				android:background="@drawable/bg_neumorph_light"
+				android:elevation="3dp"
+				android:gravity="center">
+
+				<ImageView
+					android:id="@+id/imgPersTRES"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_marginBottom="8dp"
+					android:src="@drawable/pesoeje45"
+					android:scaleType="centerInside"
+					android:background="@drawable/bg_neumorph_light"
+					android:padding="6dp" />
+
+				<LinearLayout
+					android:id="@+id/linearLayout1TRES"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:orientation="vertical"
+					android:gravity="center">
+
+					<TextView
+						android:id="@+id/txtNameTRES"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="PESO EJE NUMERO 3:"
+						android:textColor="#444"
+						android:textSize="16sp"
+						android:paddingBottom="4dp"/>
+
+					<TextView
+						android:id="@+id/txtAgeTRES"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="Peso: 0.00 kg"
+						android:textColor="#212529"
+						android:textSize="20sp"/>
+				</LinearLayout>
+			</LinearLayout>
+		</LinearLayout>
+	</ScrollView>
+
+	<LinearLayout
+		android:id="@+id/LLPesoTotal"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		android:gravity="center"
+		android:padding="5dp">
+		<LinearLayout
+			android:id="@+id/LLPesoTotalBG"
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_weight="1"
+			android:orientation="vertical"
+			android:padding="12dp"
+			android:layout_margin="8dp"
+			android:background="@drawable/bg_neumorph_light"
+			android:elevation="3dp"
+			android:gravity="center">
+
+			<ImageView
+				android:id="@+id/imgPesoTotal"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginBottom="8dp"
+				android:src="@drawable/pesototal"
+				android:scaleType="centerInside"
+				android:background="@drawable/bg_neumorph_light"
+				android:padding="6dp" />
+
+			<LinearLayout
+				android:id="@+id/LLDatosPesoTotal"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:orientation="vertical"
+				android:gravity="center">
+
+				<TextView
+					android:id="@+id/txtNamePesoTotal"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="PESO TOTAL:"
+					android:textColor="#444"
+					android:textSize="16sp"
+					android:paddingBottom="4dp"/>
+
+				<TextView
+					android:id="@+id/txtAgePesoTotal"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="Peso: 0.00 kg"
+					android:textColor="#212529"
+					android:textSize="20sp"/>
+			</LinearLayout>
+		</LinearLayout>
+	</LinearLayout>
+
+	<GridView
+        android:gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:horizontalSpacing="10dp"
+        android:verticalSpacing="10dp"
+        android:stretchMode="columnWidth"
+        android:numColumns="3"
+        android:minWidth="25dp"
+        android:minHeight="25dp"
+        android:layout_weight="1"
+        android:smoothScrollbar="true"
+        android:id="@+id/infopesos"
+        android:columnWidth="150dp"
+        android:paddingTop="5dp"
+        android:paddingLeft="5dp"
+        android:paddingRight="5dp"
+        android:paddingBottom="5dp"
+		android:visibility="invisible"
+		tools:visibility="invisible"/>
+
+	<LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#ffffff"
+		android:visibility="invisible"
+		tools:visibility="invisible">
+		<TextView
+            android:textColor="#000000"
+            android:text="PESO TOTAL CARGA: "
+            android:id="@+id/pestotalcarga"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingLeft="5dp"
+			android:visibility="invisible"
+		tools:visibility="invisible"/>
+		<TextView
+            android:textColor="#000000"
+            android:text="PESO TOTAL TRAILER:"
+            android:id="@+id/pestotaltrailer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingLeft="5dp"
+			android:visibility="invisible"
+		tools:visibility="invisible"/>
+	</LinearLayout>
+</LinearLayout>

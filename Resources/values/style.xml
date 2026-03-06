@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<style name="MyTheme.Light" parent="@android:style/Theme.Material.Light.NoActionBar">
+		<item name="android:colorPrimary">#006688</item>
+		<item name="android:colorPrimaryDark">#404080</item>
+		<item name="android:colorAccent">#0440B8</item>
+		<item name="android:windowBackground">#dee2e6</item>
+		<item name="android:statusBarColor">#046BB4</item>
+		<item name="android:spinnerItemStyle">@style/MyTheme.Light.spinnerItem</item>
+		<item name="android:spinnerDropDownItemStyle">@style/MyTheme.Light.spinnerDropDownItem</item>
+		<item name="android:editTextStyle">@style/MyTheme.Light.EditText</item>
+		<item name="android:textViewStyle">@style/MyTheme.Light.TextView</item>
+		<item name="android:radioButtonStyle">@style/MyTheme.Light.RadioButtonItem</item>
+		<item name="android:textColorHighlight">#F8A8BD</item>
+		<item name="android:actionOverflowButtonStyle">@style/MyTheme.Light.MyOverflowButtonStyle</item>
+	</style>
+
+	<style name="MyTheme.Light.spinnerItem" parent="@android:style/Widget.Material.Light.TextView.SpinnerItem">
+		<item name="android:textColor">#000000</item>
+		<item name="android:textAppearance">@android:attr/textAppearanceSmall</item>
+		<item name="android:textSize">18sp</item>
+	</style>
+	<style name="MyTheme.Light.spinnerDropDownItem" parent="@android:style/Widget.Material.Light.DropDownItem.Spinner">
+		<item name="android:background">#dee2e6</item>
+		<item name="android:textAppearance">?android:attr/textAppearanceSmall</item>
+		<item name="android:textSize">18sp</item>
+	</style>
+	<style name="MyTheme.Light.dropDownHintAppearance" parent="@android:style/TextAppearance.Widget.DropDownHint">
+		<item name="android:textAppearance">?android:attr/textAppearanceSmall</item>
+		<item name="android:textSize">18sp</item>
+	</style>
+
+	<style name="MyTheme.Light.EditText" parent="@android:style/Widget.EditText">
+		<item name="android:textColor">#000000</item>
+		<item name="android:textColorHint">#dee2e6</item>
+		<item name="android:backgroundTint">#084298</item>
+		<item name="android:textAppearance">?android:attr/textAppearanceSmall</item>
+		<item name="android:textSize">18sp</item>
+	</style>
+
+	<style name="MyTheme.Light.TextView" parent="@android:style/Widget.TextView">
+		<item name="android:textAppearance">?android:attr/textAppearanceSmall</item>
+		<item name="android:textSize">18sp</item>
+	</style>
+
+	<style name="MyTheme.Light.RadioButtonItem" parent="@android:style/Widget.Material.Light.CompoundButton.RadioButton">
+		<item name="android:textColor">#000000</item>
+	</style>
+
+	<!-- Define un estilo para el botón de desbordamiento -->
+	<style name="MyTheme.Light.MyOverflowButtonStyle" parent="@android:style/Widget.Material.Light.ActionButton.Overflow">
+		<!-- Puedes definir propiedades personalizadas aquí -->
+		<item name="android:src">@drawable/menu</item>
+		<!-- Otras propiedades de estilo aquí -->
+	</style>
+</resources>
+
+
+<!--<style name="MyTheme.EditText" parent="@android:style/Widget.EditText">
+    <item name="android:textColor">#000000</item>
+    <item name="android:background">#D4F4FC</item>
+    <item name="android:textColorHint">#C8C8C8</item>
+
+</style>-->

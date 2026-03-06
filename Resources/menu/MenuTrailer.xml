@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--For all properties see: http://developer.android.com/guide/topics/resources/menu-resource.html-->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+	<item android:id="@+id/MnuClose"
+		   android:showAsAction="always"
+		   android:text="Terminar Carga"
+		   android:icon="@mipmap/terminar"
+		   android:title="Terminar Carga"/>
+	<item android:id="@+id/MnuNew"
+		   android:showAsAction="always"
+		   android:text="Nuevo"
+		  android:title="Nuevo"
+		  android:icon="@mipmap/nuevo"/>
+	<item android:id="@+id/MnuAdicional"
+		   android:showAsAction="always"
+		  android:title="Adicional"
+		   android:text="Adicional"
+		  android:icon="@mipmap/adicional"/>
+	<item android:id="@+id/MnuReasigar"
+		   android:showAsAction="always"
+		  android:title="Reasignar Aguilares"
+		   android:text="Reasignar Aguilares"
+		  android:icon="@mipmap/reportar"/>
+	<item android:id="@+id/MnuSalir"
+		   android:showAsAction="always"
+		  android:icon="@mipmap/salir"
+		  android:title="Salir"
+		   android:text="Salir"/>
+</menu>

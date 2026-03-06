@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--For all properties see: http://developer.android.com/guide/topics/resources/menu-resource.html-->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<item
+           android:id="@+id/MenuItem5"
+           android:icon="@mipmap/ic_action_content_save"
+           android:showAsAction="ifRoom"
+           android:title="Guardar" />
+	<item
+         android:id="@+id/MenuItem7"
+         android:icon="@mipmap/ic_menu_search_holo_dark"
+         android:showAsAction="ifRoom"
+         android:title="Consultar" />
+	<item
+         android:id="@+id/MenuItem8DE"
+         android:icon="@mipmap/ic_menu_paste_holo_dark"
+         android:showAsAction="ifRoom"
+         android:title="Detalle de Etiquetas" />
+	<item
+         android:id="@+id/MenuItem8"
+         android:icon="@mipmap/peso_embarque"
+         android:showAsAction="ifRoom"
+         android:title="Consulta PesoXEjes"
+		 android:visible="false"/>
+	<item
+        android:id="@+id/MnuNuevo"
+        android:icon="@mipmap/nuevo"
+        android:showAsAction="ifRoom"
+        android:title="Nuevo" />
+	<item
+       android:id="@+id/MnuClear"
+       android:icon="@mipmap/ic_menu_paste_holo_dark"
+       android:showAsAction="ifRoom"
+       android:title="Limpiar" />
+	<item
+       android:id="@+id/MenuItem3"
+       android:icon="@mipmap/ic_menu_paste_holo_dark"
+       android:showAsAction="ifRoom"
+       android:title="Trailer" />
+	<item
+       android:id="@+id/MenuItem9"
+       android:icon="@mipmap/ic_menu_paste_holo_dark"
+       android:showAsAction="ifRoom"
+       android:title="Split" />
+	<item
+         android:id="@+id/MenuItem6"
+         android:icon="@mipmap/ic_menu_search_holo_dark"
+         android:showAsAction="ifRoom"
+         android:title="Cancelar" />
+	<item
+       android:id="@+id/MenuItem4"
+       android:icon="@mipmap/ic_menu_paste_holo_dark"
+       android:showAsAction="ifRoom"
+       android:title="Cerrar Sesion" />
+</menu>
