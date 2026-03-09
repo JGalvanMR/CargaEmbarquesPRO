@@ -3806,6 +3806,7 @@ namespace CargaEmbarques
             }
         }
 
+        #region VALIDACIONES DE OBSERVACIONES HEB
         /// <summary>
         /// Obtiene las observaciones de HEB desde tb_det_pedidos
         /// </summary>
@@ -4054,6 +4055,7 @@ namespace CargaEmbarques
             public string Cliente { get; set; }
             public string Observaciones { get; set; }
         }
+        #endregion
 
         private void AsignarAnden()
         {
