@@ -46,6 +46,7 @@ namespace CargaEmbarques
     [Activity(Label = "INGRESAR PEDIDO", ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation, ScreenOrientation = ScreenOrientation.Sensor)]
     public class CapturarPedido : Activity, ILocationListener
     {
+        #region VARIABLES
         public static string cadenaConexion = "Persist Security Info=False;user id=sa; password=Gabira1;Initial Catalog =GAB_Irapuato; server=tcp:189.206.160.206,2352; Connect Timeout = 130";
         //public static string cadenaConexion = "Persist Security Info=False;user id=sa; password=Gabira1;Initial Catalog =GAB_Irapuato; server=tcp:192.168.123.6,1433; Connect Timeout = 0";
         WSCargaEmbarques192.WebServiceEmbarques notificarFalloEtiquetasLocal = new WSCargaEmbarques192.WebServiceEmbarques();
@@ -186,6 +187,7 @@ namespace CargaEmbarques
         string cnte_clave = "", cve_subcli = "", validaVidaAnaquel = "";
         DataTable ProductosVidaAnaquel = new DataTable();
         private TeamsNotifier notiTeams;
+        #endregion
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
