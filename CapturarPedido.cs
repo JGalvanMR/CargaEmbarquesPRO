@@ -2919,7 +2919,7 @@ namespace CargaEmbarques
                     Anden.Text = Info["anden"].ToString().Trim();
                     if (ordenventa == Info["EMB_FOLIO"].ToString().Trim())
                     {
-                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() == "T")
+                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() != "T")
                         {
                             AlertDialog.Builder dialog = new AlertDialog.Builder(this);
                             AlertDialog alert = dialog.Create();
@@ -3443,7 +3443,7 @@ namespace CargaEmbarques
                     Anden.Text = Info["anden"].ToString().Trim();
                     if (ordenventa == Info["EMB_FOLIO"].ToString().Trim())
                     {
-                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() == "T")
+                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() != "T")
                         {
                             AlertDialog.Builder dialog = new AlertDialog.Builder(this);
                             AlertDialog alert = dialog.Create();
@@ -4728,7 +4728,10 @@ namespace CargaEmbarques
             if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
             return prodnombre;
         }
-        private void CantidadDisponibleTarima()
+
+        #region CANTIDAD DISPONIBLE POR TARIMA 
+        #region LEGACY
+        private void CantidadDisponibleTarimaOG()
         {
             string V_Recibo = "", V_Prd = "", V_Tip = "", Mtipo = "", MNalExp, V_Existe, V_FecCad, id_pallet;
             int L_Cad, V_Tamaño, mtar = 0, mtarf, v_cajas, mactual;
@@ -5280,6 +5283,270 @@ namespace CargaEmbarques
                 fotoevent.Enabled = false;
             }
         }
+        #endregion
+
+        #region REFACTORIZADO
+        /// <summary>
+        /// Refactorización del método CantidadDisponibleTarima
+        /// IMPORTANTE: Se mantienen los nombres originales de todas las variables por ser código legacy
+        /// </summary>
+        private void CantidadDisponibleTarima()
+        {
+            string V_Recibo = "", V_Prd = "", V_Tip = "", Mtipo = "", MNalExp = "", V_Existe = "N", V_FecCad = "", id_pallet = "";
+            int L_Cad = 0, V_Tamaño = 0, mtar = 0, mtarf = 0, v_cajas = 0, mactual = 0;
+            V_Tamaño = codigoetiqueta.Text.Trim().Length;
+
+            if (V_Tamaño == 11)
+            {
+                V_Recibo = codigoetiqueta.Text.Trim();
+                V_Prd = "";
+            }
+            else
+            {
+                if (codigoetiqueta.Text.Trim().Length == 12)
+                {
+                    string pti_famous = codigoetiqueta.Text.Trim();
+                    if (codigoetiqueta.Text.StartsWith("0"))
+                    {
+                        pti_famous = codigoetiqueta.Text.TrimStart('0');
+                    }
+
+                    if (thisConnection.State == ConnectionState.Closed) { thisConnection.Open(); }
+                    string querySSCC = "select*from tb_det_trazabilidad where pti_famous='" + pti_famous + "'";
+                    SqlCommand sqlCommand = new SqlCommand(querySSCC);
+                    sqlCommand.Connection = thisConnection;
+                    SqlDataReader sqlDataReader = sqlCommand.ExecuteReader();
+                    while (sqlDataReader.Read())
+                    {
+                        V_Recibo = sqlDataReader["recibo"].ToString().Trim();
+                        mtar = int.Parse(sqlDataReader["tarima"].ToString().Trim());
+                        V_Prd = sqlDataReader["prod_clave"].ToString().Trim();
+                        Mtipo = sqlDataReader["tipo"].ToString().Trim();
+                    }
+                    if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+                }
+                else if (codigoetiqueta.Text.Contains(SerialShippingContainerCode) == true)
+                {
+                    Match match = Regex.Match(codigoetiqueta.Text, patron);
+                    id_pallet = match.Groups[1].Value;
+
+                    if (thisConnection.State == ConnectionState.Closed) { thisConnection.Open(); }
+                    string querySSCC = "select*from tb_det_trazabilidad where id_Pallet='" + id_pallet + "'";
+                    SqlCommand sqlCommand = new SqlCommand(querySSCC);
+                    sqlCommand.Connection = thisConnection;
+                    SqlDataReader sqlDataReader = sqlCommand.ExecuteReader();
+                    while (sqlDataReader.Read())
+                    {
+                        V_Recibo = sqlDataReader["recibo"].ToString().Trim();
+                        mtar = int.Parse(sqlDataReader["tarima"].ToString().Trim());
+                        V_Prd = sqlDataReader["prod_clave"].ToString().Trim();
+                        Mtipo = sqlDataReader["tipo"].ToString().Trim();
+                    }
+                    if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+                }
+                else if (!Regex.IsMatch(codigoetiqueta.Text, @"\s"))
+                {
+                    if (thisConnection.State == ConnectionState.Closed) { thisConnection.Open(); }
+                    string querySSCC = "select*from tb_det_trazabilidad where pti_clave='" + codigoetiqueta.Text.Trim() + "'";
+                    SqlCommand sqlCommand = new SqlCommand(querySSCC);
+                    sqlCommand.Connection = thisConnection;
+                    SqlDataReader sqlDataReader = sqlCommand.ExecuteReader();
+                    while (sqlDataReader.Read())
+                    {
+                        V_Recibo = sqlDataReader["recibo"].ToString().Trim();
+                        mtar = int.Parse(sqlDataReader["tarima"].ToString().Trim());
+                        V_Prd = sqlDataReader["prod_clave"].ToString().Trim();
+                        Mtipo = sqlDataReader["tipo"].ToString().Trim();
+                    }
+                    if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+                }
+                else
+                {
+                    if (codigoetiqueta.Text.Trim().Contains(" ") == true)
+                    {
+                        DataTable CatalogodeProducto = new DataTable();
+                        if (thisConnection.State == ConnectionState.Closed)
+                        {
+                            thisConnection.Open();
+                        }
+                        string cade = "Select prod_clave,prod_nombre from tb_cat_producto where estatus = 'A' AND (prod_tipo = 'PTP' OR prod_tipo = 'PTC')  order by LEN(prod_clave) DESC";
+                        SqlDataAdapter da = new SqlDataAdapter(cade, thisConnection);
+                        DataSet ds = new DataSet();
+                        da.Fill(ds, "CatalogodeProducto");
+                        CatalogodeProducto = ds.Tables["CatalogodeProducto"];
+                        if (thisConnection.State == ConnectionState.Open)
+                        {
+                            thisConnection.Close();
+                        }
+
+                        for (int i = 0; i < CatalogodeProducto.Rows.Count; i++)
+                        {
+                            string producto_clave = CatalogodeProducto.Rows[i]["Prod_Clave"].ToString().Trim();
+                            bool esta = codigoetiqueta.Text.Trim().Contains(producto_clave);
+
+                            if (esta)
+                            {
+                                V_Prd = producto_clave;
+                                break;
+                            }
+                        }
+
+                        int posprod = codigoetiqueta.Text.Trim().IndexOf(V_Prd);
+                        V_Recibo = codigoetiqueta.Text.Trim().Substring(0, posprod).Trim();
+
+                        string restocaptura = codigoetiqueta.Text.Trim().Replace(V_Recibo, "").Replace(V_Prd, "");
+                        if (restocaptura.Length == 6)
+                        {
+                            Mtipo = "PTC";
+                            mtar = Convert.ToInt32(restocaptura.Substring(0, 3));
+                        }
+                        else
+                        {
+                            Mtipo = "PTC";
+                            mtar = Convert.ToInt32(restocaptura.Trim());
+                        }
+                    }
+                    else
+                    {
+                        L_Cad = V_Tamaño - 9;
+                        mtar = Convert.ToInt32(codigoetiqueta.Text.Trim().Substring(V_Tamaño - 3, 3));
+                        mtar = Convert.ToInt32(codigoetiqueta.Text.Trim().Substring(V_Tamaño - 3, 3));
+                        mtarf = 0;
+                        Mtipo = "PTP";
+                        V_Recibo = codigoetiqueta.Text.Trim().Substring(0, 6);
+                        if (codigoetiqueta.Text.Trim().Substring(0, 1) == "0")
+                        {
+                            Mtipo = "PTC";
+                            V_Recibo = Convert.ToInt32(V_Recibo).ToString().Trim();
+                        }
+                        V_Prd = codigoetiqueta.Text.Trim().Substring(6, L_Cad);
+                    }
+                }
+
+                switch (lugar.Text.Trim())
+                {
+                    case "Cancún":
+                        V_Tip = "FC";
+                        break;
+                    case "Guadalajara":
+                        V_Tip = "FG";
+                        break;
+                    case "Distrito Federal":
+                        V_Tip = "FD";
+                        break;
+                    case "Externos":
+                        V_Tip = "FE";
+                        break;
+                    case "Puerto Vallarta":
+                        V_Tip = "FV";
+                        break;
+                    case "Cuautitlan":
+                        V_Tip = "FM";
+                        break;
+                    case "Exportación":
+                        V_Tip = "EXP";
+                        break;
+                    case "Nacional":
+                        V_Tip = "NAL";
+                        break;
+                    case "Maquila":
+                        V_Tip = "TRA";
+                        break;
+                }
+
+                switch (V_Tip)
+                {
+                    case "EXP":
+                        MNalExp = "EXP";
+                        break;
+                    case "NAL":
+                        MNalExp = "NAL";
+                        break;
+                    case "TRA":
+                        MNalExp = "TRA";
+                        break;
+                }
+
+                if (V_Recibo.Substring(0, 2) == "00")
+                {
+                    V_Recibo = Convert.ToInt32(V_Recibo).ToString().Trim();
+                    Mtipo = "PTC";
+                }
+
+                v_cajas = 0;
+                v_dif = 0;
+                V_Existe = "N";
+                V_FecCad = "";
+
+                if (thisConnection.State == ConnectionState.Closed)
+                {
+                    thisConnection.Open();
+                }
+
+                if (Mtipo == "PTP")
+                {
+                    cadena = "Select a.folio,b.prod_nombre,a.num_cajas As etiqueta, a.cajas_sur AS SURTIDO,a.num_lote From tb_det_eti_final A, tb_cat_producto B Where a.folio = '" + V_Recibo + "' and a.cve_prod = '" + V_Prd + "' and tarima = '" + mtar + "' and a.cve_prod = b.prod_clave order by b.prod_nombre";
+                }
+                else
+                {
+                    cadena = "Select RECIBO,prod_nombre,etiqueta,SURTIDO,fecha_cad From tb_det_trazabilidad Where RECIBO = '" + Convert.ToInt32(V_Recibo) + "' and prod_clave = '" + V_Prd + "' and tarima = '" + mtar + "' order by prod_nombre";
+                }
+
+                SqlCommand cmd = new SqlCommand(cadena);
+                cmd.Connection = thisConnection;
+                SqlDataReader Info;
+                Info = cmd.ExecuteReader();
+
+                while (Info.Read())
+                {
+                    V_Existe = "S";
+                    v_dif = Convert.ToInt32(Info["etiqueta"].ToString()) - Convert.ToInt32(Info["SURTIDO"].ToString());
+                    mactual = Convert.ToInt32(Info["SURTIDO"].ToString());
+
+                    if (Mtipo == "PTP")
+                    {
+                        V_FecCad = Info["num_lote"].ToString().Trim();
+                    }
+                    else
+                    {
+                        if (Convert.ToString(Info["fecha_cad"]).Trim().Length > 0)
+                        {
+                            V_FecCad = Convert.ToString(Info["fecha_cad"]).Substring(0, 2) + DIATOMES(Convert.ToString(Info["fecha_cad"]).Substring(3, 2));
+                        }
+                    }
+                }
+
+                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                if (V_Existe == "N")
+                {
+                    Android.App.AlertDialog.Builder alertDialog = new Android.App.AlertDialog.Builder(this);
+                    alertDialog.SetTitle(Html.FromHtml("<font color='#DF0101' size = 10>Folio No Existe</font>"));
+                    alertDialog.SetIcon(Resource.Drawable.no);
+                    alertDialog.SetCancelable(false);
+                    alertDialog.SetMessage(Html.FromHtml("<font color='#000000' size = 10>No Existe Folio " + V_Recibo + " Producto " + V_Prd + " y Tarima " + mtar + " Verifique los Datos</font>"));
+                    alertDialog.SetNeutralButton("Ok", delegate
+                    {
+                        alertDialog.Dispose();
+                        Segundos = 0;
+                        Timer1.Enabled = false;
+                        codigoetiqueta.Text = "";
+                        confirmprod.Text = "";
+                    });
+                    alertDialog.Show();
+                    return;
+                }
+
+                Cajas.Text = v_dif.ToString();
+                Cajas.Enabled = true;
+                fotoevent.Enabled = false;
+            }
+        }
+
+        #endregion
+        #endregion
+
+
 
         private string DIATOMES(string MES)
         {
@@ -5359,11 +5626,12 @@ namespace CargaEmbarques
         }
 
         #region METODOS UTILIZADOS PARA AUTORIZACIONES
+        #region LEGACY
         /*
          * LoteAtrazado, sirve para verificar si un lote(o recibo) está atrasado en función de su fecha de caducidad,
          * y retorna información básica del primero que esté atrasado(si lo hay).
         */
-        private string LoteAtrazado(string v_Prd, string mtipo, string mtar, string fecha_cad, int dias)
+        private string LoteAtrazadoLEGACY(string v_Prd, string mtipo, string mtar, string fecha_cad, int dias)
         {
             FolioAtrasado = "";
             FechaAtrasada = "";
@@ -5422,6 +5690,440 @@ namespace CargaEmbarques
 
             return recibo;
         }
+        private string LoteAtrazadoOG(string v_Prd, string mtipo, string mtar, string fecha_cad, int dias)
+        {
+            FolioAtrasado = "";
+            FechaAtrasada = "";
+            string recibo = "", mfec = "";
+            TarimaAtrasada = "0";
+            DateTime fechatar = DateTime.Now;          // Variable de ámbito del método
+            DateTime datesactual = DateTime.Now;
+            int contador = 0;
+
+            // Validar y convertir la fecha de referencia (fecha_cad) que llega como parámetro
+            if (string.IsNullOrWhiteSpace(fecha_cad))
+            {
+                // Si viene vacía, se toma la fecha actual (ajusta según tu lógica de negocio)
+                datesactual = DateTime.Now;
+            }
+            else
+            {
+                try
+                {
+                    if (mtipo == "PTP")
+                        datesactual = DateTime.ParseExact(fecha_cad.Trim(), "yyyyMMdd", CultureInfo.InvariantCulture);
+                    else
+                        datesactual = DateTime.ParseExact(fecha_cad.Trim(), "dd/MM/yyyy", CultureInfo.InvariantCulture);
+                }
+                catch
+                {
+                    // Si falla el parseo, se usa la fecha actual para no interrumpir el proceso
+                    datesactual = DateTime.Now;
+                }
+            }
+
+            if (thisConnection.State == ConnectionState.Closed)
+            {
+                thisConnection.Open();
+            }
+
+            string cadena;
+            if (mtipo == "PTP")
+            {
+                // Para PTP: si fechacad es NULL o vacío, se usa fecha (elaboración) + 14 días
+                cadena = @"
+            SELECT 
+                (num_cajas - cajas_sur) AS disponible,
+                COALESCE(NULLIF(fechacad, ''), FORMAT(DATEADD(day, 14, fecha), 'yyyyMMdd', 'en-US')) AS fecha_cad,
+                folio AS recibo,
+                tarima,
+                DATEDIFF(day, GETDATE(), COALESCE(NULLIF(fechacad, ''), FORMAT(DATEADD(day, 14, fecha), 'yyyyMMdd', 'en-US'))) AS diasdisp
+            FROM tb_det_eti_final 
+            INNER JOIN tb_mstr_ordenes_prod ON folio = ordp_folio 
+            WHERE (num_cajas - cajas_sur) > 0 
+                AND (preautorizado = '' or preautorizado is null) 
+                AND cve_prod = @producto 
+                AND (select COUNT(X.Eti_caja) FROM Tb_Det_Etiqueta_Presplit X 
+                     WHERE X.Eti_Recibo = folio 
+                       AND X.Eti_Producto = cve_prod 
+                       AND X.Eti_TarIni = tarima 
+                       AND X.Eti_Lectura LIKE 'PTP%' 
+                       AND X.Estatus = 'A') = 0 
+                AND estatus_sur != 'S' 
+                AND ordp_estatus != 'C' 
+                AND etiqueta = 'S' 
+            ORDER BY fecha_cad, recibo, tarima";
+            }
+            else
+            {
+                // Para PTC: si fecha_cad es NULL o vacío, se usa pti_fecha (elaboración) + 14 días
+                cadena = @"
+            SELECT  
+                (etiqueta - surtido) AS disponible,
+                CASE 
+                    WHEN fecha_cad IS NULL OR fecha_cad = '' 
+                    THEN FORMAT(DATEADD(day, 14, pti_fecha), 'dd/MM/yyyy', 'en-US')
+                    ELSE fecha_cad 
+                END AS fecha_cad,
+                CASE 
+                    WHEN fecha_cad IS NULL OR fecha_cad = '' 
+                    THEN FORMAT(DATEADD(day, 14, pti_fecha), 'yyyyMMdd', 'en-US')
+                    ELSE FORMAT(CONVERT(datetime, fecha_cad), 'yyyyMMdd', 'en-US')
+                END AS fecha_cadu,
+                recibo,
+                tarima,
+                DATEDIFF(day, GETDATE(), 
+                    CASE 
+                        WHEN fecha_cad IS NULL OR fecha_cad = '' 
+                        THEN FORMAT(DATEADD(day, 14, pti_fecha), 'yyyyMMdd', 'en-US')
+                        ELSE FORMAT(CONVERT(datetime, fecha_cad), 'yyyyMMdd', 'en-US')
+                    END) AS diasdisp
+            FROM TB_DET_TRAZABILIDAD 
+            INNER JOIN tb_mstr_recepcion_pt ON rpt_recibo = recibo 
+            WHERE (etiqueta - surtido) > 0 
+                AND (preautorizado = '' or preautorizado is null) 
+                AND PROD_CLAVE = @producto 
+                AND (select COUNT(X.Eti_caja) FROM Tb_Det_Etiqueta_Presplit X 
+                     WHERE X.Eti_Recibo = recibo 
+                       AND X.Eti_Producto = PROD_CLAVE 
+                       AND X.Eti_TarIni = tarima 
+                       AND X.Eti_Lectura LIKE 'PTC%' 
+                       AND X.Estatus = 'A') = 0 
+                AND pti_estatus_sur = '' 
+                AND tipo = 'PTC' 
+                AND (rpt_tipo != 'TR' OR (rpt_tipo != 'TR' AND rpt_inventario = 'S')) 
+                AND rpt_estatus = ''  
+            ORDER BY fecha_cadu, recibo, tarima";
+            }
+
+            SqlCommand cmd = new SqlCommand(cadena, thisConnection);
+            cmd.Parameters.AddWithValue("@producto", v_Prd.Trim());
+
+            SqlDataReader Info = null;
+            try
+            {
+                Info = cmd.ExecuteReader();
+                while (Info.Read())
+                {
+                    string fechaCadStr = Convert.ToString(Info["fecha_cad"]).Trim();
+                    DateTime tempDate;   // Variable temporal para el parseo
+                    bool parseOk;
+
+                    if (mtipo == "PTP")
+                    {
+                        parseOk = DateTime.TryParseExact(fechaCadStr, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out tempDate);
+                    }
+                    else
+                    {
+                        parseOk = DateTime.TryParseExact(fechaCadStr, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out tempDate);
+                    }
+
+                    if (!parseOk)
+                    {
+                        // No se pudo interpretar la fecha; se omite este lote (no se considera atrasado)
+                        continue;
+                    }
+
+                    // Asignar la fecha parseada a la variable del método
+                    fechatar = tempDate;
+
+                    // Si es el primer registro que cumple la condición de atraso (datesactual > fechatar), lo capturamos
+                    if (DateTime.Compare(datesactual, fechatar) > 0 && contador == 0)
+                    {
+                        mfec = fechatar.ToString(); // o el formato que requieras
+                        recibo = Convert.ToString(Info["recibo"]) + "," + mfec;
+                        FolioAtrasado = Convert.ToString(Info["recibo"]);
+                        CajasDisp = Convert.ToString(Info["disponible"]);
+                        FechaAtrasada = fechatar.ToString("dd/MMM/yy");
+                        TarimaAtrasada = Convert.ToString(Info["tarima"]);
+                    }
+
+                    contador++;
+                }
+            }
+            finally
+            {
+                if (Info != null)
+                    Info.Close();
+                if (thisConnection.State == ConnectionState.Open)
+                    thisConnection.Close();
+            }
+
+            return recibo;
+        }
+        #endregion
+
+        #region REFACTORIZADO
+        /// <summary>
+        /// Busca el primer lote atrasado para un producto específico
+        /// </summary>
+        /// <param name="v_Prd">Código del producto</param>
+        /// <param name="mtipo">Tipo de producto (PTP o PTC)</param>
+        /// <param name="mtar">Número de tarima</param>
+        /// <param name="fecha_cad">Fecha de caducidad de referencia</param>
+        /// <param name="dias">Días de tolerancia</param>
+        /// <returns>Recibo + fecha en formato original</returns>
+        private string LoteAtrazado(string v_Prd, string mtipo, string mtar, string fecha_cad, int dias)
+        {
+            FolioAtrasado = "";
+            FechaAtrasada = "";
+            string recibo = "", mfec = "";
+            TarimaAtrasada = "0";
+            DateTime fechatar = DateTime.Now;
+            DateTime datesactual = DateTime.Now;
+            int contador = 0;
+
+            // Validar y convertir la fecha de referencia (fecha_cad) que llega como parámetro
+            if (string.IsNullOrWhiteSpace(fecha_cad))
+            {
+                // Si viene vacía, se toma la fecha actual
+                datesactual = DateTime.Now;
+            }
+            else
+            {
+                try
+                {
+                    if (mtipo == "PTP")
+                        datesactual = DateTime.ParseExact(fecha_cad.Trim(), "yyyyMMdd", CultureInfo.InvariantCulture);
+                    else
+                        datesactual = DateTime.ParseExact(fecha_cad.Trim(), "dd/MM/yyyy", CultureInfo.InvariantCulture);
+                }
+                catch
+                {
+                    // Si falla el parseo, se usa la fecha actual para no interrumpir el proceso
+                    datesactual = DateTime.Now;
+                }
+            }
+
+            if (thisConnection.State == ConnectionState.Closed)
+            {
+                thisConnection.Open();
+            }
+
+            string cadena;
+            if (mtipo == "PTP")
+            {
+                // Para PTP: si fechacad es NULL o vacío, se usa fecha (elaboración) + 14 días
+                cadena = @"
+    SELECT
+        (num_cajas - cajas_sur) AS disponible,
+        COALESCE(NULLIF(fechacad, ''), FORMAT(DATEADD(day, 14, fecha), 'yyyyMMdd', 'en-US')) AS fecha_cad,
+        folio AS recibo,
+        tarima,
+        DATEDIFF(day, GETDATE(), COALESCE(NULLIF(fechacad, ''), FORMAT(DATEADD(day, 14, fecha), 'yyyyMMdd', 'en-US'))) AS diasdisp
+    FROM tb_det_eti_final
+    INNER JOIN tb_mstr_ordenes_prod ON folio = ordp_folio
+    WHERE (num_cajas - cajas_sur) > 0
+        AND (preautorizado = '' or preautorizado is null)
+        AND cve_prod = @producto
+        AND (select COUNT(X.Eti_caja) FROM Tb_Det_Etiqueta_Presplit X
+             WHERE X.Eti_Recibo = folio
+               AND X.Eti_Producto = cve_prod
+               AND X.Eti_TarIni = tarima
+               AND X.Eti_Lectura LIKE 'PTP%'
+               AND X.Estatus = 'A') = 0
+        AND estatus_sur != 'S'
+        AND ordp_estatus != 'C'
+        AND etiqueta = 'S'
+    ORDER BY fecha_cad, recibo, tarima";
+            }
+            else
+            {
+                // Para PTC: si fecha_cad es NULL o vacío, se usa pti_fecha (elaboración) + 14 días
+                cadena = @"
+    SELECT
+        (etiqueta - surtido) AS disponible,
+        CASE
+            WHEN fecha_cad IS NULL OR fecha_cad = ''
+            THEN FORMAT(DATEADD(day, 14, pti_fecha), 'dd/MM/yyyy', 'en-US')
+            ELSE fecha_cad
+        END AS fecha_cad,
+        CASE
+            WHEN fecha_cad IS NULL OR fecha_cad = ''
+            THEN FORMAT(DATEADD(day, 14, pti_fecha), 'yyyyMMdd', 'en-US')
+            ELSE FORMAT(CONVERT(datetime, fecha_cad), 'yyyyMMdd', 'en-US')
+        END AS fecha_cadu,
+        recibo,
+        tarima,
+        DATEDIFF(day, GETDATE(),
+            CASE
+                WHEN fecha_cad IS NULL OR fecha_cad = ''
+                THEN FORMAT(DATEADD(day, 14, pti_fecha), 'yyyyMMdd', 'en-US')
+                ELSE FORMAT(CONVERT(datetime, fecha_cad), 'yyyyMMdd', 'en-US')
+            END) AS diasdisp
+    FROM TB_DET_TRAZABILIDAD
+    INNER JOIN tb_mstr_recepcion_pt ON rpt_recibo = recibo
+    WHERE (etiqueta - surtido) > 0
+        AND (preautorizado = '' or preautorizado is null)
+        AND PROD_CLAVE = @producto
+        AND (select COUNT(X.Eti_caja) FROM Tb_Det_Etiqueta_Presplit X
+             WHERE X.Eti_Recibo = recibo
+               AND X.Eti_Producto = PROD_CLAVE
+               AND X.Eti_TarIni = tarima
+               AND X.Eti_Lectura LIKE 'PTC%'
+               AND X.Estatus = 'A') = 0
+        AND pti_estatus_sur = ''
+        AND tipo = 'PTC'
+        AND (rpt_tipo != 'TR' OR (rpt_tipo != 'TR' AND rpt_inventario = 'S'))
+        AND rpt_estatus = ''
+    ORDER BY fecha_cadu, recibo, tarima";
+            }
+
+            SqlCommand cmd = new SqlCommand(cadena, thisConnection);
+            cmd.Parameters.AddWithValue("@producto", v_Prd.Trim());
+
+            SqlDataReader Info = null;
+            try
+            {
+                Info = cmd.ExecuteReader();
+                while (Info.Read())
+                {
+                    string fechaCadStr = Convert.ToString(Info["fecha_cad"]).Trim();
+                    DateTime tempDate;
+                    bool parseOk;
+
+                    if (mtipo == "PTP")
+                    {
+                        parseOk = DateTime.TryParseExact(fechaCadStr, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out tempDate);
+                    }
+                    else
+                    {
+                        parseOk = DateTime.TryParseExact(fechaCadStr, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out tempDate);
+                    }
+
+                    if (!parseOk)
+                    {
+                        // No se pudo interpretar la fecha; se omite este lote (no se considera atrasado)
+                        continue;
+                    }
+
+                    // Asignar la fecha parseada a la variable del método
+                    fechatar = tempDate;
+
+                    // Si es el primer registro que cumple la condición de atraso (datesactual > fechatar), lo capturamos
+                    if (DateTime.Compare(datesactual, fechatar) > 0 && contador == 0)
+                    {
+                        mfec = fechatar.ToString(); // o el formato que requieras
+                        recibo = Convert.ToString(Info["recibo"]) + "," + mfec;
+                        FolioAtrasado = Convert.ToString(Info["recibo"]);
+                        CajasDisp = Convert.ToString(Info["disponible"]);
+                        FechaAtrasada = fechatar.ToString("dd/MMM/yy");
+                        TarimaAtrasada = Convert.ToString(Info["tarima"]);
+                    }
+
+                    contador++;
+                }
+            }
+            finally
+            {
+                if (Info != null)
+                    Info.Close();
+                if (thisConnection.State == ConnectionState.Open)
+                    thisConnection.Close();
+            }
+
+            return recibo;
+        }
+
+        /// <summary>
+        /// Parsea la fecha de caducidad de referencia según el tipo de producto
+        /// </summary>
+        private DateTime ParsearFechaReferencia(string fecha_cad, string mtipo)
+        {
+            DateTime datesactual = DateTime.Now;
+
+            if (!string.IsNullOrWhiteSpace(fecha_cad))
+            {
+                try
+                {
+                    string formatoFecha = (mtipo == "PTP") ? "yyyyMMdd" : "dd/MM/yyyy";
+                    datesactual = DateTime.ParseExact(fecha_cad.Trim(), formatoFecha, CultureInfo.InvariantCulture);
+                }
+                catch
+                {
+                    // Si falla el parseo, usar fecha actual
+                    datesactual = DateTime.Now;
+                }
+            }
+
+            return datesactual;
+        }
+
+        /// <summary>
+        /// Construye la consulta SQL para buscar lotes atrasados según el tipo de producto
+        /// </summary>
+        private string ConstruirConsultaLotesAtrasados(string v_Prd, string mtipo)
+        {
+            if (mtipo == "PTP")
+            {
+                // Consulta para productos PTP (Producto Terminado Principal)
+                return @"
+            SELECT
+                (num_cajas - cajas_sur) AS disponible,
+                COALESCE(NULLIF(fechacad, ''), FORMAT(DATEADD(day, 14, fecha), 'yyyyMMdd', 'en-US')) AS fecha_cad,
+                folio AS recibo,
+                tarima,
+                DATEDIFF(day, GETDATE(), COALESCE(NULLIF(fechacad, ''), FORMAT(DATEADD(day, 14, fecha), 'yyyyMMdd', 'en-US'))) AS diasdisp
+            FROM tb_det_eti_final
+            INNER JOIN tb_mstr_ordenes_prod ON folio = ordp_folio
+            WHERE (num_cajas - cajas_sur) > 0
+                AND (preautorizado = '' or preautorizado is null)
+                AND cve_prod = @producto
+                AND (select COUNT(X.Eti_caja) FROM Tb_Det_Etiqueta_Presplit X
+                     WHERE X.Eti_Recibo = folio
+                       AND X.Eti_Producto = cve_prod
+                       AND X.Eti_TarIni = tarima
+                       AND X.Eti_Lectura LIKE 'PTP%'
+                       AND X.Estatus = 'A') = 0
+                AND estatus_sur != 'S'
+                AND ordp_estatus != 'C'
+                AND etiqueta = 'S'
+            ORDER BY fecha_cad, recibo, tarima";
+            }
+            else
+            {
+                // Consulta para productos PTC (Producto Terminado Comercial)
+                return @"
+            SELECT
+                (etiqueta - surtido) AS disponible,
+                CASE
+                    WHEN fecha_cad IS NULL OR fecha_cad = ''
+                    THEN FORMAT(DATEADD(day, 14, pti_fecha), 'dd/MM/yyyy', 'en-US')
+                    ELSE fecha_cad
+                END AS fecha_cad,
+                CASE
+                    WHEN fecha_cad IS NULL OR fecha_cad = ''
+                    THEN FORMAT(DATEADD(day, 14, pti_fecha), 'yyyyMMdd', 'en-US')
+                    ELSE FORMAT(CONVERT(datetime, fecha_cad), 'yyyyMMdd', 'en-US')
+                END AS fecha_cadu,
+                recibo,
+                tarima,
+                DATEDIFF(day, GETDATE(),
+                    CASE
+                        WHEN fecha_cad IS NULL OR fecha_cad = ''
+                        THEN FORMAT(DATEADD(day, 14, pti_fecha), 'yyyyMMdd', 'en-US')
+                        ELSE FORMAT(CONVERT(datetime, fecha_cad), 'yyyyMMdd', 'en-US')
+                    END) AS diasdisp
+            FROM TB_DET_TRAZABILIDAD
+            INNER JOIN tb_mstr_recepcion_pt ON rpt_recibo = recibo
+            WHERE (etiqueta - surtido) > 0
+                AND (preautorizado = '' or preautorizado is null)
+                AND PROD_CLAVE = @producto
+                AND (select COUNT(X.Eti_caja) FROM Tb_Det_Etiqueta_Presplit X
+                     WHERE X.Eti_Recibo = recibo
+                       AND X.Eti_Producto = PROD_CLAVE
+                       AND X.Eti_TarIni = tarima
+                       AND X.Eti_Lectura LIKE 'PTC%'
+                       AND X.Estatus = 'A') = 0
+                AND pti_estatus_sur = ''
+                AND tipo = 'PTC'
+                AND (rpt_tipo != 'TR' OR (rpt_tipo != 'TR' AND rpt_inventario = 'S'))
+                AND rpt_estatus = ''
+            ORDER BY fecha_cadu, recibo, tarima";
+            }
+        }
+
+        #endregion
         /*
          * FolioAtrazado, tiene como propósito verificar si existe un folio anterior disponible para surtir producto 
          * antes de utilizar el folio actual. Es útil, por ejemplo, en un sistema de trazabilidad donde se prioriza 
@@ -6269,272 +6971,272 @@ namespace CargaEmbarques
                             break;
                     }
 
-                    if (thisConnection.State == ConnectionState.Closed)
+                    MostrarDialogoObservacionesSiAplica(orden, (observacionExtra) =>
                     {
-                        thisConnection.Open();
-                    }
-                    cadena = "Select DISTINCT PROD_CLAVE,CANT_PED,CANT_SUR,NOM_PROD from tb_ped_embarque Where emb_folio='" + orden + "' and NALEXP = '" + TipoPed + "' order by NOM_PROD";
-                    SqlCommand cmd = new SqlCommand(cadena);
+                        if (thisConnection.State == ConnectionState.Closed) { thisConnection.Open(); }
+                        cadena = "Select DISTINCT PROD_CLAVE,CANT_PED,CANT_SUR,NOM_PROD from tb_ped_embarque Where emb_folio='" + orden + "' and NALEXP = '" + TipoPed + "' order by NOM_PROD";
+                        SqlCommand cmd = new SqlCommand(cadena);
 
-                    SqlDataReader Info;
-                    cmd.Connection = thisConnection;
-                    Info = cmd.ExecuteReader();
-                    Errores = "";
-                    while (Info.Read())
-                    {
-                        if (Convert.ToInt32(Info["CANT_PED"].ToString().Trim()) != Convert.ToInt32(Info["CANT_SUR"].ToString().Trim()))
+                        SqlDataReader Info;
+                        cmd.Connection = thisConnection;
+                        Info = cmd.ExecuteReader();
+                        Errores = "";
+                        while (Info.Read())
                         {
-                            Errores = Errores + Info["CANT_PED"].ToString().Trim() + "   ," + Info["CANT_SUR"].ToString().Trim() + "   ," + Info["NOM_PROD"].ToString().Trim();
-                        }
-                    }
-                    if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-
-                    string observaciones = "";
-                    string correo = "";
-
-                    if (Errores.Trim().Length > 0)
-                    {
-
-                        et = new EditText(this);
-                        et.InputType = Android.Text.InputTypes.TextVariationNormal | Android.Text.InputTypes.TextFlagImeMultiLine;
-                        et.LongClickable = false;
-                        et.Text = observaciones;
-                        AlertDialog.Builder ad = new AlertDialog.Builder(this);
-                        ad.SetTitle("Observaciones Orden con Diferencia");
-                        ad.SetCancelable(false);
-                        ad.SetView(et);
-                        ad.SetPositiveButton(Html.FromHtml("<font face = 'Comic Sans MS, arial' color='#DF0101' size = '10'>Guardar</font>"), (senderdiferencia, argsdiferencia) =>
-                        {
-                            observaciones = et.Text;
-                            if (correo == "")
+                            if (Convert.ToInt32(Info["CANT_PED"].ToString().Trim()) != Convert.ToInt32(Info["CANT_SUR"].ToString().Trim()))
                             {
-                                Toast.MakeText(this, "Favor de Notificar Posible Diferencia de Embarques Antes de Guardar el embarque", ToastLength.Long).Show();
+                                Errores = Errores + Info["CANT_PED"].ToString().Trim() + "   ," + Info["CANT_SUR"].ToString().Trim() + "   ," + Info["NOM_PROD"].ToString().Trim();
                             }
-                            else
+                        }
+                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                        string observaciones = "";
+                        string correo = "";
+
+                        if (Errores.Trim().Length > 0)
+                        {
+
+                            et = new EditText(this);
+                            et.InputType = Android.Text.InputTypes.TextVariationNormal | Android.Text.InputTypes.TextFlagImeMultiLine;
+                            et.LongClickable = false;
+                            et.Text = observaciones;
+
+                            #region OBSERVACIONES ORDEN CON DIFERENCIA
+                            AlertDialog.Builder ad = new AlertDialog.Builder(this);
+                            ad.SetTitle("Observaciones Orden con Diferencia");
+                            ad.SetCancelable(false);
+                            ad.SetView(et);
+                            ad.SetPositiveButton(Html.FromHtml("<font face = 'Comic Sans MS, arial' color='#DF0101' size = '10'>Guardar</font>"), (senderdiferencia, argsdiferencia) =>
                             {
+                                observaciones = et.Text;
+                                if (correo == "")
+                                {
+                                    Toast.MakeText(this, "Favor de Notificar Posible Diferencia de Embarques Antes de Guardar el embarque", ToastLength.Long).Show();
+                                }
+                                else
+                                {
+                                    if (observaciones.Length < 10)
+                                    {
+                                        Toast.MakeText(this, "No se ha capturado la Observación", ToastLength.Long).Show();
+                                        et.RequestFocus();
+                                    }
+                                    else
+                                    {
+                                        int splitpendientes = 0;
+                                        if (thisConnection.State == ConnectionState.Closed)
+                                        {
+                                            thisConnection.Open();
+                                        }
+                                        cadena = "select COUNT(cajas) as total from tb_det_split Where emb_folio = '" + pedido.Text + "' And estatus = 'A'";
+                                        cmd = new SqlCommand(cadena);
+                                        cmd.Connection = thisConnection;
+                                        Info = cmd.ExecuteReader();
+                                        Errores = "";
+                                        while (Info.Read())
+                                        {
+                                            splitpendientes = Convert.ToInt32(Info["total"].ToString().Trim());
+                                        }
+                                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+                                        if (splitpendientes > 0)
+                                        {
+                                            Toast.MakeText(this, "El pedido actual No puede ser cerrado, debido a que tiene Split Pendientes por Cargar", ToastLength.Long).Show();
+                                            return;
+                                        }
+
+                                        if (thisConnection.State == ConnectionState.Closed)
+                                        {
+                                            thisConnection.Open();
+                                        }
+                                        cadena = "select ISNULL(sum(cajas),0) as total from tb_det_embarque Where emb_folio = '" + pedido.Text + "'";
+                                        cmd = new SqlCommand(cadena, thisConnection);
+                                        V_Cajas = Convert.ToInt32(cmd.ExecuteScalar());
+
+                                        cadena = "UPDATE tb_mstr_embarque SET  hora_fin = '" + DateTime.Now.ToString("hh:mm tt").Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "', cajas = '" + V_Cajas + "', sts = 'T', EMB_obs = '" + observaciones + "' WHERE emb_folio = '" + pedido.Text + "' ";
+                                        cmd = new SqlCommand(cadena, thisConnection);
+                                        cmd.ExecuteNonQuery();
+
+                                        if (TipoPed == "EXP")
+                                        {
+                                            cadena = "UPDATE tb_mstr_pedidos_exp SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
+                                        }
+                                        else
+                                        {
+                                            cadena = "UPDATE tb_mstr_pedidos_nal SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
+                                        }
+                                        cmd = new SqlCommand(cadena, thisConnection);
+                                        cmd.ExecuteNonQuery();
+
+                                        cadena = "UPDATE tb_det_acceso_celulares SET estado = 'T' WHERE estado = 'A' AND sistema = 'CargaEmbarques' AND folio ='" + pedido.Text.Trim() + "'";
+                                        cmd = new SqlCommand(cadena, thisConnection);
+                                        cmd.ExecuteNonQuery();
+                                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+                                    }
+                                }
+                                ad.Dispose();
+                                Limpiar();
+                            });
+                            ad.SetNegativeButton(Html.FromHtml("<font face = 'Comic Sans MS, arial' color='#DF0101' size = '10'>Cancelar</font>"), (senderdiferencia, argsdiferencia) =>
+                            {
+                                return;
+                            });
+                            ad.SetNeutralButton(Html.FromHtml("<font face = 'Comic Sans MS, arial' color='#DF0101' size = '10'>Notificar</font>"), (senderdiferencia, argsdiferencia) =>
+                            {
+                                observaciones = et.Text;
                                 if (observaciones.Length < 10)
                                 {
                                     Toast.MakeText(this, "No se ha capturado la Observación", ToastLength.Long).Show();
                                     et.RequestFocus();
                                 }
-                                else
+
+                                switch (lugar.Text.Trim())
                                 {
-                                    int splitpendientes = 0;
-                                    if (thisConnection.State == ConnectionState.Closed)
-                                    {
-                                        thisConnection.Open();
-                                    }
-                                    cadena = "select COUNT(cajas) as total from tb_det_split Where emb_folio = '" + pedido.Text + "' And estatus = 'A'";
-                                    cmd = new SqlCommand(cadena);
-                                    cmd.Connection = thisConnection;
-                                    Info = cmd.ExecuteReader();
-                                    Errores = "";
-                                    while (Info.Read())
-                                    {
-                                        splitpendientes = Convert.ToInt32(Info["total"].ToString().Trim());
-                                    }
-                                    if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                    if (splitpendientes > 0)
-                                    {
-                                        Toast.MakeText(this, "El pedido actual No puede ser cerrado, debido a que tiene Split Pendientes por Cargar", ToastLength.Long).Show();
-                                        return;
-                                    }
-
-                                    if (thisConnection.State == ConnectionState.Closed)
-                                    {
-                                        thisConnection.Open();
-                                    }
-                                    cadena = "select ISNULL(sum(cajas),0) as total from tb_det_embarque Where emb_folio = '" + pedido.Text + "'";
-                                    cmd = new SqlCommand(cadena, thisConnection);
-                                    V_Cajas = Convert.ToInt32(cmd.ExecuteScalar());
-
-                                    cadena = "UPDATE tb_mstr_embarque SET  hora_fin = '" + DateTime.Now.ToString("hh:mm tt").Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "', cajas = '" + V_Cajas + "', sts = 'T', EMB_obs = '" + observaciones + "' WHERE emb_folio = '" + pedido.Text + "' ";
-                                    cmd = new SqlCommand(cadena, thisConnection);
-                                    cmd.ExecuteNonQuery();
-
-                                    if (TipoPed == "EXP")
-                                    {
-                                        cadena = "UPDATE tb_mstr_pedidos_exp SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
-                                    }
-                                    else
-                                    {
-                                        cadena = "UPDATE tb_mstr_pedidos_nal SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
-                                    }
-                                    cmd = new SqlCommand(cadena, thisConnection);
-                                    cmd.ExecuteNonQuery();
-
-                                    cadena = "UPDATE tb_det_acceso_celulares SET estado = 'T' WHERE estado = 'A' AND sistema = 'CargaEmbarques' AND folio ='" + pedido.Text.Trim() + "'";
-                                    cmd = new SqlCommand(cadena, thisConnection);
-                                    cmd.ExecuteNonQuery();
-                                    if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+                                    case "Nacional":
+                                        TipoPed = "NAL"; ;
+                                        break;
+                                    case "Exportación":
+                                        TipoPed = "EXP"; ;
+                                        break;
+                                    case "Maquila":
+                                        TipoPed = "TRA"; ;
+                                        break;
                                 }
-                            }
-                            ad.Dispose();
-                            Limpiar();
-                        });
-                        ad.SetNegativeButton(Html.FromHtml("<font face = 'Comic Sans MS, arial' color='#DF0101' size = '10'>Cancelar</font>"), (senderdiferencia, argsdiferencia) =>
-                        {
-                            return;
-                        });
 
-
-                        ad.SetNeutralButton(Html.FromHtml("<font face = 'Comic Sans MS, arial' color='#DF0101' size = '10'>Notificar</font>"), (senderdiferencia, argsdiferencia) =>
-                        {
-                            observaciones = et.Text;
-                            if (observaciones.Length < 10)
-                            {
-                                Toast.MakeText(this, "No se ha capturado la Observación", ToastLength.Long).Show();
-                                et.RequestFocus();
-                            }
-
-                            switch (lugar.Text.Trim())
-                            {
-                                case "Nacional":
-                                    TipoPed = "NAL"; ;
-                                    break;
-                                case "Exportación":
-                                    TipoPed = "EXP"; ;
-                                    break;
-                                case "Maquila":
-                                    TipoPed = "TRA"; ;
-                                    break;
-                            }
-
-                            int minutos = 0;
-                            if (thisConnection.State == ConnectionState.Closed)
-                            {
-                                thisConnection.Open();
-                            }
-                            cadena = "IF EXISTS(SELECT emb_folio FROM tb_mstr_embarque WHERE emb_folio = '" + pedido.Text + "' AND EMB_obs != '') Select ISNULL(datediff (mi, (Select horaenvcorreo FROM tb_mstr_embarque WHERE  emb_folio = '" + pedido.Text + "'), GETDATE() ), 15) ELSE SELECT '15'";
-                            cmd = new SqlCommand(cadena, thisConnection);
-                            minutos = Convert.ToInt32(cmd.ExecuteScalar());
-                            if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-
-                            if (minutos > 14)
-                            {
-
+                                int minutos = 0;
                                 if (thisConnection.State == ConnectionState.Closed)
                                 {
                                     thisConnection.Open();
                                 }
-                                cadena = "UPDATE tb_mstr_embarque SET  EMB_obs = '" + observaciones + "', horaenvcorreo = GETDATE() WHERE emb_folio = '" + pedido.Text + "' ";
+                                cadena = "IF EXISTS(SELECT emb_folio FROM tb_mstr_embarque WHERE emb_folio = '" + pedido.Text + "' AND EMB_obs != '') Select ISNULL(datediff (mi, (Select horaenvcorreo FROM tb_mstr_embarque WHERE  emb_folio = '" + pedido.Text + "'), GETDATE() ), 15) ELSE SELECT '15'";
                                 cmd = new SqlCommand(cadena, thisConnection);
                                 minutos = Convert.ToInt32(cmd.ExecuteScalar());
                                 if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
 
-                                //var proxy = new WebServiceEmbarques.WebServiceEmbarques();
-                                //var proxy = new WSEmbarques.WebServiceEmbarques();
-
-                                if (INFO_FILE == "http://192.168.123.4:81/EmbarquesApk/estado_respaldo.txt")
+                                if (minutos > 14)
                                 {
-                                    proxyLocal.EnviarPosibleDiferenciaEmbarques(pedido.Text.Trim(), TipoPed);
+
+                                    if (thisConnection.State == ConnectionState.Closed)
+                                    {
+                                        thisConnection.Open();
+                                    }
+                                    cadena = "UPDATE tb_mstr_embarque SET  EMB_obs = '" + observaciones + "', horaenvcorreo = GETDATE() WHERE emb_folio = '" + pedido.Text + "' ";
+                                    cmd = new SqlCommand(cadena, thisConnection);
+                                    minutos = Convert.ToInt32(cmd.ExecuteScalar());
+                                    if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                                    //var proxy = new WebServiceEmbarques.WebServiceEmbarques();
+                                    //var proxy = new WSEmbarques.WebServiceEmbarques();
+
+                                    if (INFO_FILE == "http://192.168.123.4:81/EmbarquesApk/estado_respaldo.txt")
+                                    {
+                                        proxyLocal.EnviarPosibleDiferenciaEmbarques(pedido.Text.Trim(), TipoPed);
+                                    }
+                                    else
+                                    {
+                                        proxy.EnviarPosibleDiferenciaEmbarques(pedido.Text.Trim(), TipoPed);
+                                    }
+                                    //var proxy = new WSCargaEmbarques189.WebServiceEmbarques();
+                                    //proxy.EnviarPosibleDiferenciaEmbarques(pedido.Text.Trim(), TipoPed);
+                                    Toast.MakeText(this, "POSIBLE DIFERENCIA DE EMBARQUES ENVIADA CORRECTAMENTE", ToastLength.Long).Show();
+
                                 }
                                 else
                                 {
-                                    proxy.EnviarPosibleDiferenciaEmbarques(pedido.Text.Trim(), TipoPed);
+                                    Toast.MakeText(this, "Debe pasar un intervalo de 15 minutos Para volver a enviar el correo de Posible Diferencia de Embarques", ToastLength.Long).Show();
                                 }
-                                //var proxy = new WSCargaEmbarques189.WebServiceEmbarques();
-                                //proxy.EnviarPosibleDiferenciaEmbarques(pedido.Text.Trim(), TipoPed);
-                                Toast.MakeText(this, "POSIBLE DIFERENCIA DE EMBARQUES ENVIADA CORRECTAMENTE", ToastLength.Long).Show();
-
-                            }
-                            else
+                            });
+                            #endregion
+                            #region GUARDAR EMBARQUE CON DIFERENCIA
+                            Android.App.AlertDialog.Builder dialogdiferencia = new Android.App.AlertDialog.Builder(this);
+                            dialogdiferencia.SetTitle(Html.FromHtml("<font color='#DF0101' size = 10>GUARDAR EMBARQUE CON DIFERENCIA</font>"));
+                            dialogdiferencia.SetIcon(Resource.Drawable.Info);
+                            dialogdiferencia.SetCancelable(false);
+                            dialogdiferencia.SetMessage(Html.FromHtml("<font color='#000000' size = 10>¿Hay Diferencias en el Embarque desea Guardarlo?</font>"));
+                            dialogdiferencia.SetPositiveButton("Continuar", (senderdiferencia, argsdiferencia) =>
                             {
-                                Toast.MakeText(this, "Debe pasar un intervalo de 15 minutos Para volver a enviar el correo de Posible Diferencia de Embarques", ToastLength.Long).Show();
-                            }
-                        });
+                                if (thisConnection.State == ConnectionState.Closed)
+                                {
+                                    thisConnection.Open();
+                                }
+                                cadena = "Select EMB_obs, horaenvcorreo FROM tb_mstr_embarque WHERE  emb_folio = '" + pedido.Text + "'";
+                                cmd = new SqlCommand(cadena);
+                                cmd.Connection = thisConnection;
+                                Info = cmd.ExecuteReader();
+                                Errores = "";
+                                while (Info.Read())
+                                {
+                                    observaciones = observaciones + Info["EMB_obs"].ToString().Trim();
+                                    correo = Info["horaenvcorreo"].ToString().Trim();
+                                }
+                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+                                dialogdiferencia.Dispose();
+                                ad.Show();
 
 
-
-
-
-                        Android.App.AlertDialog.Builder dialogdiferencia = new Android.App.AlertDialog.Builder(this);
-                        dialogdiferencia.SetTitle(Html.FromHtml("<font color='#DF0101' size = 10>GUARDAR EMBARQUE CON DIFERENCIA</font>"));
-                        dialogdiferencia.SetIcon(Resource.Drawable.Info);
-                        dialogdiferencia.SetCancelable(false);
-                        dialogdiferencia.SetMessage(Html.FromHtml("<font color='#000000' size = 10>¿Hay Diferencias en el Embarque desea Guardarlo?</font>"));
-                        dialogdiferencia.SetPositiveButton("Continuar", (senderdiferencia, argsdiferencia) =>
+                            });
+                            dialogdiferencia.SetNegativeButton("Cancelar", (senderdiferencia, argsdiferencia) =>
+                            {
+                                dialogdiferencia.Dispose();
+                                return;
+                            });
+                            dialogdiferencia.Show();
+                            #endregion
+                        }
+                        else
                         {
+                            int splitpendientes = 0;
                             if (thisConnection.State == ConnectionState.Closed)
                             {
                                 thisConnection.Open();
                             }
-                            cadena = "Select EMB_obs, horaenvcorreo FROM tb_mstr_embarque WHERE  emb_folio = '" + pedido.Text + "'";
+                            cadena = "select COUNT(cajas) as total from tb_det_split Where emb_folio = '" + pedido.Text + "' And estatus = 'A'";
                             cmd = new SqlCommand(cadena);
                             cmd.Connection = thisConnection;
                             Info = cmd.ExecuteReader();
                             Errores = "";
                             while (Info.Read())
                             {
-                                observaciones = observaciones + Info["EMB_obs"].ToString().Trim();
-                                correo = Info["horaenvcorreo"].ToString().Trim();
+                                splitpendientes = Convert.ToInt32(Info["total"].ToString().Trim());
                             }
                             if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                            dialogdiferencia.Dispose();
-                            ad.Show();
+                            if (splitpendientes > 0)
+                            {
+                                Toast.MakeText(this, "El pedido actual No puede ser cerrado, debido a que tiene Split Pendientes por Cargar", ToastLength.Long).Show();
+                                return;
+                            }
 
+                            if (thisConnection.State == ConnectionState.Closed)
+                            {
+                                thisConnection.Open();
+                            }
+                            cadena = "select sum(cajas) as total from tb_det_embarque Where emb_folio = '" + pedido.Text + "'";
+                            cmd = new SqlCommand(cadena, thisConnection);
+                            V_Cajas = Convert.ToInt32(cmd.ExecuteScalar());
 
-                        });
-                        dialogdiferencia.SetNegativeButton("Cancelar", (senderdiferencia, argsdiferencia) =>
-                        {
-                            dialogdiferencia.Dispose();
-                            return;
-                        });
-                        dialogdiferencia.Show();
-                    }
-                    else
-                    {
-                        int splitpendientes = 0;
-                        if (thisConnection.State == ConnectionState.Closed)
-                        {
-                            thisConnection.Open();
+                            cadena = "UPDATE tb_mstr_embarque SET  hora_fin = '" + DateTime.Now.ToString("hh:mm tt").Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "', cajas = '" + V_Cajas + "', sts = 'T', EMB_obs = '" + observaciones + "' WHERE emb_folio = '" + pedido.Text + "' ";
+                            cmd = new SqlCommand(cadena, thisConnection);
+                            cmd.ExecuteNonQuery();
+
+                            if (TipoPed == "EXP")
+                            {
+                                cadena = "UPDATE tb_mstr_pedidos_exp SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
+                            }
+                            else
+                            {
+                                cadena = "UPDATE tb_mstr_pedidos_nal SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
+                            }
+                            cmd = new SqlCommand(cadena, thisConnection);
+                            cmd.ExecuteNonQuery();
+
+                            cadena = "UPDATE tb_det_acceso_celulares SET estado = 'T' WHERE estado = 'A' AND sistema = 'SplitTrailer' AND folio ='" + pedido.Text.Trim() + "'";
+                            cmd = new SqlCommand(cadena, thisConnection);
+                            cmd.ExecuteNonQuery();
+                            if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+                            Limpiar();
+
                         }
-                        cadena = "select COUNT(cajas) as total from tb_det_split Where emb_folio = '" + pedido.Text + "' And estatus = 'A'";
-                        cmd = new SqlCommand(cadena);
-                        cmd.Connection = thisConnection;
-                        Info = cmd.ExecuteReader();
-                        Errores = "";
-                        while (Info.Read())
-                        {
-                            splitpendientes = Convert.ToInt32(Info["total"].ToString().Trim());
-                        }
-                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                        if (splitpendientes > 0)
-                        {
-                            Toast.MakeText(this, "El pedido actual No puede ser cerrado, debido a que tiene Split Pendientes por Cargar", ToastLength.Long).Show();
-                            return;
-                        }
+                    });
 
-                        if (thisConnection.State == ConnectionState.Closed)
-                        {
-                            thisConnection.Open();
-                        }
-                        cadena = "select sum(cajas) as total from tb_det_embarque Where emb_folio = '" + pedido.Text + "'";
-                        cmd = new SqlCommand(cadena, thisConnection);
-                        V_Cajas = Convert.ToInt32(cmd.ExecuteScalar());
 
-                        cadena = "UPDATE tb_mstr_embarque SET  hora_fin = '" + DateTime.Now.ToString("hh:mm tt").Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "', cajas = '" + V_Cajas + "', sts = 'T', EMB_obs = '" + observaciones + "' WHERE emb_folio = '" + pedido.Text + "' ";
-                        cmd = new SqlCommand(cadena, thisConnection);
-                        cmd.ExecuteNonQuery();
-
-                        if (TipoPed == "EXP")
-                        {
-                            cadena = "UPDATE tb_mstr_pedidos_exp SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
-                        }
-                        else
-                        {
-                            cadena = "UPDATE tb_mstr_pedidos_nal SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
-                        }
-                        cmd = new SqlCommand(cadena, thisConnection);
-                        cmd.ExecuteNonQuery();
-
-                        cadena = "UPDATE tb_det_acceso_celulares SET estado = 'T' WHERE estado = 'A' AND sistema = 'SplitTrailer' AND folio ='" + pedido.Text.Trim() + "'";
-                        cmd = new SqlCommand(cadena, thisConnection);
-                        cmd.ExecuteNonQuery();
-                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                        Limpiar();
-
-                    }
 
                 });
 
@@ -7834,8 +8536,6 @@ namespace CargaEmbarques
             }
         }
 
-
-
         public (string Recibo, string Tarima, string ProdClave, string Tipo)? Procesar(string codigo)
         {
             string V_Prd = "", V_Recibo = "", mtar = "";
@@ -8010,6 +8710,232 @@ namespace CargaEmbarques
             public string Producto { get; set; }
             public string Cliente { get; set; }
             public string Observaciones { get; set; }
+        }
+        #endregion
+
+        #region CERRAR EMBARQUE CON OBSERVACIONES
+        /// <summary>
+        /// Evalúa si el trailer lleva más de 6 horas en planta o la hora actual
+        /// es posterior a las 12:00 a.m. Si alguna condición se cumple, muestra
+        /// el AlertDialog "Cerrar Embarque con Observaciones" con un Spinner
+        /// cargado desde tb_cat_observaciones. Al confirmar, invoca <paramref name="onGuardar"/>
+        /// con la observación seleccionada; si ninguna condición aplica, invoca
+        /// directamente el callback sin mostrar el diálogo.
+        /// </summary>
+        /// <param name="folioEmbarque">Folio actual del embarque.</param>
+        /// <param name="onGuardar">
+        ///     Callback que recibe la observación (vacía si no aplica) y
+        ///     ejecuta el resto de la lógica de guardado.
+        /// </param>
+        private void MostrarDialogoObservacionesSiAplica(string folioEmbarque, Action<string> onGuardar)
+        {
+            bool masde6Horas = false;
+            bool despues12am = false;
+
+            // ── Condición 2: hora actual entre 00:00 y 05:59 (madrugada) ─────────
+            int horaActual = DateTime.Now.Hour;
+            despues12am = (horaActual >= 0 && horaActual < 6);
+
+            // ── Condición 1: más de 6 horas en planta (desde registro de vigilancia) ────────────────────────────
+            try
+            {
+                if (thisConnection.State == ConnectionState.Closed)
+                    thisConnection.Open();
+
+                // Se une tb_mstr_embarque con tb_mstr_trailer via pdn_folio = emb_folio
+                // y se toma HoraRegVig que es char(5) en formato HH:mm
+                string sqlHoraVig =
+                    @"SELECT TOP 1 t.HoraRegVig
+          FROM tb_mstr_trailer t
+          INNER JOIN tb_mstr_embarque e ON e.emb_folio = t.pdn_folio
+          WHERE e.emb_folio = @folio
+            AND t.HoraRegVig IS NOT NULL
+            AND LTRIM(RTRIM(t.HoraRegVig)) != ''
+          ORDER BY t.fecha DESC";
+
+                using (SqlCommand cmd = new SqlCommand(sqlHoraVig, thisConnection))
+                {
+                    cmd.Parameters.AddWithValue("@folio", folioEmbarque);
+                    object resultado = cmd.ExecuteScalar();
+
+                    if (resultado != null && resultado != DBNull.Value)
+                    {
+                        string horaStr = resultado.ToString().Trim();
+
+                        // HoraRegVig es char(5) → formato "HH:mm" (ej. "08:30", "23:45")
+                        bool parsed = DateTime.TryParseExact(
+                            horaStr,
+                            new[] { "HH:mm", "H:mm" },
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            System.Globalization.DateTimeStyles.None,
+                            out DateTime horaEntrada
+                        );
+
+                        if (parsed)
+                        {
+                            // hora_ini solo tiene hora/minuto → combinar con la fecha de hoy
+                            DateTime ahora = DateTime.Now;
+                            DateTime entradaHoy = new DateTime(
+                                ahora.Year, ahora.Month, ahora.Day,
+                                horaEntrada.Hour, horaEntrada.Minute, 0
+                            );
+
+                            // Si la hora de entrada es mayor que ahora, el trailer
+                            // entró el día anterior (cruzó medianoche)
+                            if (entradaHoy > ahora)
+                                entradaHoy = entradaHoy.AddDays(-1);
+
+                            double horasEnPlanta = (ahora - entradaHoy).TotalHours;
+                            masde6Horas = horasEnPlanta > 6;
+
+                            Android.Util.Log.Debug("CargaEmbarques",
+                                $"hora_ini='{horaStr}' → entrada={entradaHoy:HH:mm} | " +
+                                $"ahora={ahora:HH:mm} | horas={horasEnPlanta:F1} | >6h={masde6Horas}");
+                        }
+                        else
+                        {
+                            // Parse fallido → NO activar la condición (evita falsos positivos)
+                            Android.Util.Log.Warn("CargaEmbarques",
+                                $"No se pudo parsear hora_ini: '{horaStr}' — condición >6h ignorada.");
+                        }
+                    }
+                    else
+                    {
+                        // No se encontró registro de vigilancia para este folio
+                        Android.Util.Log.Warn("CargaEmbarques",
+                            $"Sin registro de vigilancia para folio '{folioEmbarque}' — condición >6h ignorada.");
+                    }
+                }
+            }
+            catch (Java.Lang.Exception ex)
+            {
+                Toast.MakeText(this, "Error al verificar hora de entrada: " + ex.Message,
+                               ToastLength.Long).Show();
+            }
+            finally
+            {
+                if (thisConnection.State == ConnectionState.Open)
+                    thisConnection.Close();
+            }
+
+            // ── Si ninguna condición aplica → guardar directo ─────────────────────
+            if (!masde6Horas && !despues12am)
+            {
+                onGuardar?.Invoke(string.Empty);
+                return;
+            }
+
+            // ── Cargar catálogo de observaciones desde SQL Server ─────────────────
+            var listaObservaciones = new List<string>();
+
+            try
+            {
+                if (thisConnection.State == ConnectionState.Closed)
+                    thisConnection.Open();
+
+                string sqlObs =
+                    @"SELECT obs_descripcion 
+              FROM tb_cat_observaciones
+              WHERE obs_activo = 'S'
+                AND (obs_sistema = 'CargaEmbarques' OR obs_sistema IS NULL)
+              ORDER BY obs_descripcion";
+
+                using (SqlCommand cmd = new SqlCommand(sqlObs, thisConnection))
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                        listaObservaciones.Add(reader["obs_descripcion"].ToString().Trim());
+                }
+            }
+            catch (Java.Lang.Exception ex)
+            {
+                Toast.MakeText(this, "Error al cargar observaciones: " + ex.Message,
+                               ToastLength.Long).Show();
+            }
+            finally
+            {
+                if (thisConnection.State == ConnectionState.Open)
+                    thisConnection.Close();
+            }
+
+            // ── Construir la vista del diálogo ────────────────────────────────────
+            LinearLayout layout = new LinearLayout(this)
+            {
+                Orientation = Orientation.Vertical
+            };
+            layout.SetPadding(48, 24, 48, 8);
+
+            // Mensaje descriptivo según la condición detectada
+            string motivoCondicion = (masde6Horas && despues12am)
+                ? "El trailer lleva más de 6 horas en planta y la salida es después de las 12:00 a.m."
+                : masde6Horas
+                    ? "El trailer lleva más de 6 horas en planta."
+                    : "La salida del trailer es después de las 12:00 a.m.";
+
+            TextView tvMensaje = new TextView(this);
+            tvMensaje.Text = motivoCondicion;
+            tvMensaje.TextSize = 14f;
+            tvMensaje.SetTextColor(Android.Graphics.Color.ParseColor("#333333"));
+            tvMensaje.SetPadding(0, 0, 0, 20);
+            layout.AddView(tvMensaje);
+
+            TextView tvLabel = new TextView(this);
+            tvLabel.Text = "Razón de la observación:";
+            tvLabel.TextSize = 14f;
+            tvLabel.SetTypeface(null, Android.Graphics.TypefaceStyle.Bold);
+            layout.AddView(tvLabel);
+
+            Spinner spinner = new Spinner(this);
+            var adapter = new ArrayAdapter<string>(
+                this,
+                Android.Resource.Layout.SimpleSpinnerDropDownItem,
+                listaObservaciones.Count > 0
+                    ? listaObservaciones
+                    : new List<string> { "(Sin opciones disponibles)" }
+            );
+            adapter.SetDropDownViewResource(Android.Resource.Layout.SimpleSpinnerDropDownItem);
+            spinner.Adapter = adapter;
+            layout.AddView(spinner);
+
+            // ── Mostrar AlertDialog ───────────────────────────────────────────────
+            AlertDialog.Builder dialogObs = new AlertDialog.Builder(this);
+            dialogObs.SetTitle(
+                Html.FromHtml("<font color='#DF0101' size='10'><b>CERRAR EMBARQUE CON OBSERVACIONES</b></font>")
+            );
+            dialogObs.SetIcon(Resource.Drawable.Info);
+            dialogObs.SetCancelable(false);
+            dialogObs.SetView(layout);
+
+            dialogObs.SetPositiveButton(
+                Html.FromHtml("<font color='#DF0101'>Aceptar</font>"),
+                (senderObs, argsObs) =>
+                {
+                    if (listaObservaciones.Count == 0)
+                    {
+                        Toast.MakeText(this, "No hay observaciones disponibles en el catálogo.",
+                                       ToastLength.Long).Show();
+                        return;
+                    }
+
+                    string observacionSeleccionada = spinner.SelectedItem?.ToString() ?? string.Empty;
+
+                    if (string.IsNullOrWhiteSpace(observacionSeleccionada))
+                    {
+                        Toast.MakeText(this, "Debe seleccionar una observación antes de continuar.",
+                                       ToastLength.Long).Show();
+                        return;
+                    }
+
+                    onGuardar?.Invoke(observacionSeleccionada);
+                }
+            );
+
+            dialogObs.SetNegativeButton(
+                Html.FromHtml("<font color='#DF0101'>Cancelar</font>"),
+                (senderObs, argsObs) => { /* el usuario canceló, no se guarda nada */ }
+            );
+
+            dialogObs.Show();
         }
         #endregion
     }
