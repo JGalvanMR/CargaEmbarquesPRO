@@ -106,6 +106,7 @@
     <Compile Include="myGVitemAdapter.cs" />
     <Compile Include="PesoXEjesFragment2.cs" />
     <Compile Include="PesoXEjesFragment.cs" />
+    <Compile Include="Services\ATUService.cs" />
     <Compile Include="subirFoto.cs" />
     <Compile Include="MainActivity.cs" />
     <Compile Include="Resources\Resource.designer.cs" />
@@ -199,6 +200,9 @@
     </PackageReference>
     <PackageReference Include="System.Net.Http">
       <Version>4.3.4</Version>
+    </PackageReference>
+    <PackageReference Include="System.Text.Json">
+      <Version>10.0.5</Version>
     </PackageReference>
     <PackageReference Include="Xam.Plugin.DeviceInfo">
       <Version>4.1.1</Version>

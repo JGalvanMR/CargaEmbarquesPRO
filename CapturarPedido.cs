@@ -19,6 +19,7 @@ using AndroidX.Core.App;
 using AndroidX.Core.Content;
 using AndroidX.Fragment.App;
 using CargaEmbarques.Modal;
+using CargaEmbarques.Services;
 using Java.Lang;
 using Java.Net;
 using Java.Util;
@@ -37,6 +38,7 @@ using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using static Android.Provider.ContactsContract.CommonDataKinds;
 using AlertDialog = Android.App.AlertDialog;
 
@@ -3443,7 +3445,7 @@ namespace CargaEmbarques
                     Anden.Text = Info["anden"].ToString().Trim();
                     if (ordenventa == Info["EMB_FOLIO"].ToString().Trim())
                     {
-                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() != "T")
+                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() == "T")
                         {
                             AlertDialog.Builder dialog = new AlertDialog.Builder(this);
                             AlertDialog alert = dialog.Create();
@@ -8936,6 +8938,230 @@ namespace CargaEmbarques
             );
 
             dialogObs.Show();
+        }
+        #endregion
+
+
+        #region ATU
+        // Agrega este método en tu Activity, junto a los otros métodos existentes
+        private void MostrarDialogoATU(
+            string motivo,
+            // Todos estos ya los tienes como variables en el scope del KeyPress:
+            string folioLeido, string fechaLeido,
+            string folioAtrasado, string fechaAtrasada,
+            string productocve, string producto,
+            string cajasDisp, string tarimaLeido,
+            string tarimaAtrasada)
+        {
+            var atuService = new CargaEmbarques.Services.ATUService();
+
+            // ── 1. Primero verificar que el servidor ATU responde ────────────────
+            Task.Run(async () =>
+            {
+                bool servidorOk = await atuService.ServidorDisponibleAsync();
+
+                RunOnUiThread(() =>
+                {
+                    if (!servidorOk)
+                    {
+                        // Sin servidor ATU → ofrecemos el método legacy como respaldo
+                        new Android.App.AlertDialog.Builder(this)
+                            .SetTitle("⚠️ Servidor ATU no disponible")
+                            .SetMessage("No se pudo conectar al servidor ATU.\n\nEl supervisor deberá autorizar con su contraseña (método anterior).")
+                            .SetPositiveButton("Usar contraseña", (s, e) =>
+                            {
+                                // Aquí llamas al dialog de password original
+                                // (lo dejas intacto como fallback)
+                                MostrarDialogoPasswordLegacy(motivo, folioLeido, fechaLeido,
+                                    folioAtrasado, fechaAtrasada, productocve, producto,
+                                    cajasDisp, tarimaLeido, tarimaAtrasada);
+                            })
+                            .SetNegativeButton("Cancelar", (s, e) => Borrar())
+                            .SetCancelable(false)
+                            .Show();
+                        return;
+                    }
+
+                    // ── 2. Servidor disponible → crear solicitud ATU ─────────────
+                    MostrarDialogoEsperandoOTP(atuService, motivo, folioLeido, fechaLeido,
+                        folioAtrasado, fechaAtrasada, productocve, producto,
+                        cajasDisp, tarimaLeido, tarimaAtrasada);
+                });
+            });
+        }
+
+        private void MostrarDialogoEsperandoOTP(
+            ATUService atuService,
+            string motivo,
+            string folioLeido, string fechaLeido,
+            string folioAtrasado, string fechaAtrasada,
+            string productocve, string producto,
+            string cajasDisp, string tarimaLeido,
+            string tarimaAtrasada)
+        {
+            // Inflar un layout con los campos que necesitamos
+            // (si no quieres crear un layout XML, usamos controles en código)
+            var view = new LinearLayout(this) { Orientation = Orientation.Vertical };
+            view.SetPadding(40, 20, 40, 10);
+
+            var lblInfo = new TextView(this)
+            {
+                Text = $"📦 Folio adelantado detectado\n" +
+                       $"Producto: {productocve} - {producto}\n" +
+                       $"Recibo sugerido: {folioAtrasado} | Tarima: {tarimaAtrasada}\n\n" +
+                       $"Se notificó a Cámaras Frías.\n" +
+                       $"Espere el código OTP del supervisor."
+            };
+            lblInfo.SetTextSize(Android.Util.ComplexUnitType.Sp, 14);
+            lblInfo.SetTextColor(Android.Graphics.Color.Black);
+
+            var lblSup = new TextView(this) { Text = "No. Empleado del supervisor:" };
+            lblSup.SetTextSize(Android.Util.ComplexUnitType.Sp, 13);
+
+            var txtSupervisor = new EditText(this)
+            {
+                Hint = "Ej: 12345",
+                InputType = Android.Text.InputTypes.ClassNumber
+            };
+
+            var lblOTP = new TextView(this) { Text = "Código OTP (6 dígitos):" };
+            lblOTP.SetTextSize(Android.Util.ComplexUnitType.Sp, 13);
+
+            var txtOTP = new EditText(this)
+            {
+                Hint = "______",
+                InputType = Android.Text.InputTypes.ClassNumber,
+                LetterSpacing = 0.3f
+            };
+            txtOTP.SetTextSize(Android.Util.ComplexUnitType.Sp, 28);
+
+            view.AddView(lblInfo);
+            view.AddView(lblSup);
+            view.AddView(txtSupervisor);
+            view.AddView(lblOTP);
+            view.AddView(txtOTP);
+
+            // ── Crear solicitud ATU en paralelo mientras el dialog está abierto ──
+            // (el supervisor de cámaras frías recibirá la notificación en su celular)
+            var responsableAjuste = responsable.Trim().Length > 25
+                ? responsable.Trim().Substring(0, 25)
+                : responsable.Trim();
+
+            Task.Run(async () =>
+            {
+                await atuService.CrearSolicitudAsync(
+                    embFolio: pedido.Text.Trim(),
+                    reciboCap: folioLeido.Trim(),
+                    reciboSug: folioAtrasado.Trim(),
+                    fechaRecCap: fechaLeido,
+                    fechaRecSug: fechaAtrasada,
+                    prodClave: productocve.Trim(),
+                    producto: producto.Trim(),
+                    cantidad: cajasDisp.Trim(),
+                    tarimaCap: tarimaLeido.Trim(),
+                    tarimaSug: tarimaAtrasada.Trim(),
+                    responsable: responsableAjuste,
+                    motivo: motivo.Trim(),
+                    imei: imei.Trim());
+                // La notificación a ATU.CamaraFria la emite el backend via SignalR
+            });
+
+            var dialog = new Android.App.AlertDialog.Builder(this)
+                .SetTitle("🔐 Autorización ATU — Folio Adelantado")
+                .SetView(view)
+                .SetCancelable(false)
+                .Create();
+
+            dialog.SetButton("✓ VALIDAR OTP", (s, e) => { }); // override abajo
+            dialog.SetButton2("✕ CANCELAR", (s, e) =>
+            {
+                Borrar();
+                dialog.Dismiss();
+            });
+
+            dialog.Show();
+
+            // Override del botón para no cerrar automáticamente
+            dialog.GetButton((int)Android.Content.DialogInterface.DialogButtonPositive)
+                  .Click += (s, e) =>
+                  {
+                      string otpIngresado = txtOTP.Text.Trim();
+                      string supervisorIngresado = txtSupervisor.Text.Trim();
+
+                      if (supervisorIngresado.Length == 0)
+                      {
+                          Toast.MakeText(this, "Ingresa el número de empleado del supervisor", ToastLength.Short).Show();
+                          return;
+                      }
+
+                      if (otpIngresado.Length != 6)
+                      {
+                          Toast.MakeText(this, "El código OTP debe tener 6 dígitos", ToastLength.Short).Show();
+                          return;
+                      }
+
+                      // Deshabilitar mientras valida
+                      dialog.GetButton((int)Android.Content.DialogInterface.DialogButtonPositive).Enabled = false;
+                      Toast.MakeText(this, "⏳ Validando código...", ToastLength.Short).Show();
+
+                      Task.Run(async () =>
+                      {
+                          var (isValid, supId, mensaje) = await atuService.ValidarOTPAsync(
+                      otp: otpIngresado,
+                      embFolio: pedido.Text.Trim(),
+                      prodClave: productocve.Trim(),
+                      reciboSug: folioAtrasado.Trim(),
+                      tarimaSug: tarimaAtrasada.Trim(),
+                      supervisorId: supervisorIngresado);
+
+                          RunOnUiThread(() =>
+                          {
+                              if (isValid)
+                              {
+                                  // ✅ OTP válido — construir el INSERT igual que antes
+                                  // supId viene del backend (el supervisor que generó el OTP)
+                                  mAutoriza = supId.Length > 0 ? supId : supervisorIngresado;
+
+                                  ConsultaInserFolioAdelantado =
+                              "insert into tb_det_folio_adelantado " +
+                              "(responsable, fecha, emb_folio, recibo_cap, fecreccap, " +
+                              "recibo_sug, fecrecsug, prod_clave, producto, cantidad, " +
+                              "autorizo, tarimacap, tarimasug, imei, motivo, fechareal) " +
+                              "values ('" + responsableAjuste.Trim() + "','" +
+                              DateTime.Now.ToString("dd/MM/yyyy hh:mm:ss tt") + "','" +
+                              pedido.Text + "', '" + folioLeido.Trim() + "', '" + fechaLeido + "','" +
+                              folioAtrasado + "', '" + fechaAtrasada + "', '" + productocve + "', '" +
+                              producto + "', '" + cajasDisp + "', '" + mAutoriza.Trim() + "', '" +
+                              tarimaLeido + "', '" + tarimaAtrasada.Trim() + "', '" + imei.Trim() +
+                              "', '" + motivo.Trim() + "', GETDATE())";
+
+                                  Toast.MakeText(this, "✅ Autorización ATU válida", ToastLength.Short).Show();
+                                  dialog.Dismiss();
+                              }
+                              else
+                              {
+                                  // ❌ OTP inválido
+                                  var colorMensaje = mensaje.Contains("FRAUDE")
+                              ? "🔴 FRAUDE DETECTADO\n\n" + mensaje
+                              : "❌ " + mensaje;
+
+                                  new Android.App.AlertDialog.Builder(this)
+                              .SetTitle("Código no válido")
+                              .SetMessage(colorMensaje)
+                              .SetNeutralButton("Reintentar", (s2, e2) =>
+                                {
+                                    txtOTP.Text = "";
+                                    txtOTP.RequestFocus();
+                                    dialog.GetButton(
+                                        (int)Android.Content.DialogInterface.DialogButtonPositive
+                                    ).Enabled = true;
+                                })
+                              .SetCancelable(false)
+                              .Show();
+                              }
+                          });
+                      });
+                  };
         }
         #endregion
     }
