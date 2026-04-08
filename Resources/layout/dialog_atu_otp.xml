@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- CargaEmbarques/Resources/layout/dialog_atu_otp.xml -->
+<!-- Colores del sistema: fondo blanco/gris claro para que combine con CargaEmbarques -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#FFFFFF">
+
+	<!-- Encabezado -->
+	<TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Autorización ATU"
+        android:textSize="18sp" android:textStyle="bold" android:textColor="#1A237E"
+        android:paddingBottom="4dp"/>
+
+	<!-- Info del folio (se llena desde código) -->
+	<TextView android:id="@+id/lblAtuInfo"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="#555555" android:textSize="13sp"
+        android:lineSpacingExtra="3dp"
+        android:background="#F5F5F5" android:padding="10dp"
+        android:layout_marginBottom="16dp"/>
+
+	<!-- Instrucción -->
+	<TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Código OTP (6 dígitos — dictado por el supervisor de cámaras):"
+        android:textColor="#333333" android:textSize="13sp" android:paddingBottom="6dp"/>
+
+	<!-- Campo OTP — dígitos grandes, fácil de escribir -->
+	<EditText android:id="@+id/txtAtuOtp"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:hint="_ _ _ _ _ _" android:textColorHint="#BBBBBB"
+        android:textColor="#1A237E"
+        android:textSize="36sp" android:textStyle="bold"
+        android:gravity="center" android:inputType="number"
+        android:maxLength="6"
+        android:background="@android:drawable/edit_text"
+        android:padding="8dp" android:layout_marginBottom="12dp"/>
+
+	<!-- Estado / resultado -->
+	<TextView android:id="@+id/lblAtuEstado"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="" android:textSize="14sp"
+        android:gravity="center" android:paddingTop="4dp"/>
+
+</LinearLayout>

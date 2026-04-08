@@ -189,6 +189,9 @@ namespace CargaEmbarques
         string cnte_clave = "", cve_subcli = "", validaVidaAnaquel = "";
         DataTable ProductosVidaAnaquel = new DataTable();
         private TeamsNotifier notiTeams;
+
+        // Reemplaza la inicialización con tipo de destino (C# 9.0+) por la sintaxis compatible con C# 8.0
+        private readonly CargaEmbarques.Services.ATUService _atuService = new CargaEmbarques.Services.ATUService();
         #endregion
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -1030,11 +1033,14 @@ namespace CargaEmbarques
                 }
             };
 
+
             ////COMIENZA VALIDACION ETIQUETA VERDE [CLAVE PRODUCTO]
             //codigoetiqueta.InputType = Android.Text.InputTypes.Null;
+
             codigoetiqueta.KeyPress += (senderx, ex) =>
             {
                 ex.Handled = false;
+
                 string EtiquetaVerde = codigoetiqueta.Text;
                 string V_Recibo = "", V_Prd = "", V_Existe = "", Mtipo = "", Fechacad = "", fecha_cad = "", diacad = "", mescad = "", prod_nombre = "", mtar = "", preautorizado = "";
                 int L_Cad = 0, V_Tamaño = 0, wrkcen = 0, pos = 0;
@@ -1043,7 +1049,6 @@ namespace CargaEmbarques
                 PenXAuto = "N";
                 ConsultaInserFolioAdelantado = "";
 
-                //if(ex.Event.Action == KeyEventActions.Down && ex.KeyCode == Keycode.Enter)
                 if ((ex.Event.Action == KeyEventActions.Up) && (ex.KeyCode == Keycode.Enter))
                 {
                     Segundos = 0;
@@ -1058,22 +1063,29 @@ namespace CargaEmbarques
                         temperatura.Text = "";
                         Posicion.Text = "";
                         codigoetiqueta.RequestFocus();
+
                         InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
                         imm.ShowSoftInput(codigoetiqueta, ShowFlags.Implicit);
                         return;
                     }
 
-                    //if (codigoetiqueta.Text.Contains("http://www.mrlucky.com.mx/tr/trazabilidad2_dmi.php?id_codigo=") != true && confirmprod.Text.Contains("http://gab.mrlucky.com.mx/tr/trazabilidad2_dmi.php?id_codigo=") != true)
                     #region VALIDA LA CORRECTA ESTRUCTURA DE LA ETIQUETA VERDE
-                    if ((codigoetiqueta.Text.Contains("HTTP://WWW.MRLUCKY.COM.MX/TR/TRAZABILIDAD2_DMI.PHP?ID_CODIGO=") == false && codigoetiqueta.Text.Contains("http://www.mrlucky.com.mx/tr/trazabilidad2_dmi.php?id_codigo=") == false) && (codigoetiqueta.Text.Contains("HTTP://GAB.MRLUCKY.COM.MX/TR/TRAZABILIDAD2_DMI.PHP?ID_CODIGO=") == false && codigoetiqueta.Text.Contains("http://gab.mrlucky.com.mx/tr/trazabilidad2_dmi.php?id_codigo=") == false))
+
+                    if ((codigoetiqueta.Text.Contains("HTTP://WWW.MRLUCKY.COM.MX/TR/TRAZABILIDAD2_DMI.PHP?ID_CODIGO=") == false &&
+                         codigoetiqueta.Text.Contains("http://www.mrlucky.com.mx/tr/trazabilidad2_dmi.php?id_codigo=") == false) &&
+                        (codigoetiqueta.Text.Contains("HTTP://GAB.MRLUCKY.COM.MX/TR/TRAZABILIDAD2_DMI.PHP?ID_CODIGO=") == false &&
+                         codigoetiqueta.Text.Contains("http://gab.mrlucky.com.mx/tr/trazabilidad2_dmi.php?id_codigo=") == false))
                     {
                         #region VALIDA QUE LA LECTURA NO SEA UN SPLIT
+
                         if (codigoetiqueta.Text.Contains("SPLIT*") != true)
                         {
                             CapturaSplitActiva = "0";
+
                             if (codigoetiqueta.Text.Trim().Length > 10)
                             {
                                 var infoEtiqueta = ProcesarEtiqueta(codigoetiqueta.Text.Trim());
+
                                 if (infoEtiqueta != null)
                                 {
                                     Mtipo = infoEtiqueta.Value.Tipo;
@@ -1081,22 +1093,27 @@ namespace CargaEmbarques
                                     V_Prd = infoEtiqueta.Value.ProdClave;
                                     mtar = infoEtiqueta.Value.Tarima;
 
-
                                     #region VALIDA LECTURA DE PTI FAMOUS
+
                                     if ((V_Recibo == "" || mtar == "" || V_Prd == "" || Mtipo == "") && codigoetiqueta.Text.Trim().Length == 12)
                                     {
                                         string pti_famous = codigoetiqueta.Text.Trim();
+
                                         if (codigoetiqueta.Text.StartsWith("0"))
                                         {
                                             pti_famous = codigoetiqueta.Text.TrimStart('0');
                                         }
-                                        //string pti_famous = Regex.Replace(codigoetiqueta.Text, patron, "");
 
-                                        if (thisConnection.State == ConnectionState.Closed) { thisConnection.Open(); }
+                                        if (thisConnection.State == ConnectionState.Closed)
+                                        {
+                                            thisConnection.Open();
+                                        }
+
                                         string querySSCC = "select*from tb_det_trazabilidad where pti_famous='" + pti_famous + "'";
                                         SqlCommand sqlCommand = new SqlCommand(querySSCC);
                                         sqlCommand.Connection = thisConnection;
                                         SqlDataReader sqlDataReader = sqlCommand.ExecuteReader();
+
                                         while (sqlDataReader.Read())
                                         {
                                             V_Recibo = sqlDataReader["recibo"].ToString().Trim();
@@ -1104,20 +1121,32 @@ namespace CargaEmbarques
                                             V_Prd = sqlDataReader["prod_clave"].ToString().Trim();
                                             Mtipo = sqlDataReader["tipo"].ToString().Trim();
                                         }
-                                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                                        if (thisConnection.State == ConnectionState.Open)
+                                        {
+                                            thisConnection.Close();
+                                        }
                                     }
+
                                     #endregion
+
                                     #region VALIDA LECTURA DE SERIAL SHIPPING CONTAINER CODE
+
                                     else if ((V_Recibo == "" || mtar == "" || V_Prd == "" || Mtipo == "") && codigoetiqueta.Text.Contains(SerialShippingContainerCode) == true)
                                     {
                                         Match match = Regex.Match(codigoetiqueta.Text, patron);
                                         id_pallet = match.Groups[1].Value;
 
-                                        if (thisConnection.State == ConnectionState.Closed) { thisConnection.Open(); }
+                                        if (thisConnection.State == ConnectionState.Closed)
+                                        {
+                                            thisConnection.Open();
+                                        }
+
                                         string querySSCC = "select*from tb_det_trazabilidad where id_Pallet='" + id_pallet + "'";
                                         SqlCommand sqlCommand = new SqlCommand(querySSCC);
                                         sqlCommand.Connection = thisConnection;
                                         SqlDataReader sqlDataReader = sqlCommand.ExecuteReader();
+
                                         while (sqlDataReader.Read())
                                         {
                                             V_Recibo = sqlDataReader["recibo"].ToString().Trim();
@@ -1125,14 +1154,23 @@ namespace CargaEmbarques
                                             V_Prd = sqlDataReader["prod_clave"].ToString().Trim();
                                             Mtipo = sqlDataReader["tipo"].ToString().Trim();
                                         }
-                                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                                        if (thisConnection.State == ConnectionState.Open)
+                                        {
+                                            thisConnection.Close();
+                                        }
                                     }
+
                                     #endregion
+
                                     #region VALIDA LECTURA DE PTI CLAVE
+
                                     else if ((V_Recibo == "" || mtar == "" || V_Prd == "" || Mtipo == "") && !Regex.IsMatch(codigoetiqueta.Text.Trim(), @"\s"))
                                     {
                                         #region VALIDAR ETIQUETA NUEVA
+
                                         var datos = ValidarEtiquetaVerde(codigoetiqueta.Text.Trim());
+
                                         if (datos != null)
                                         {
                                             Mtipo = datos.Value.Tipo;
@@ -1140,13 +1178,19 @@ namespace CargaEmbarques
                                             V_Prd = datos.Value.ProdClave;
                                             mtar = datos.Value.Tarima;
                                         }
+
                                         #endregion
 
-                                        if (thisConnection.State == ConnectionState.Closed) { thisConnection.Open(); }
+                                        if (thisConnection.State == ConnectionState.Closed)
+                                        {
+                                            thisConnection.Open();
+                                        }
+
                                         string querySSCC = "select*from tb_det_trazabilidad where pti_clave='" + codigoetiqueta.Text.Trim() + "'";
                                         SqlCommand sqlCommand = new SqlCommand(querySSCC);
                                         sqlCommand.Connection = thisConnection;
                                         SqlDataReader sqlDataReader = sqlCommand.ExecuteReader();
+
                                         while (sqlDataReader.Read())
                                         {
                                             V_Recibo = sqlDataReader["recibo"].ToString().Trim();
@@ -1154,10 +1198,17 @@ namespace CargaEmbarques
                                             V_Prd = sqlDataReader["prod_clave"].ToString().Trim();
                                             Mtipo = sqlDataReader["tipo"].ToString().Trim();
                                         }
-                                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                                        if (thisConnection.State == ConnectionState.Open)
+                                        {
+                                            thisConnection.Close();
+                                        }
                                     }
+
                                     #endregion
+
                                     #region VALIDA LECTURA DE ETIQUETA ANTERIOR
+
                                     else if ((V_Recibo == "" || mtar == "" || V_Prd == "" || Mtipo == "") && codigoetiqueta.Text.Trim().Contains(" ") == true)
                                     {
                                         if (codigoetiqueta.Text.Trim().Length < 18)
@@ -1177,6 +1228,7 @@ namespace CargaEmbarques
                                             V_Prd = V_Prd.Replace(mtar, "");
                                             mtar = mtar.Replace(" ", "0");
                                             Mtipo = "PTP";
+
                                             if (V_Recibo.Substring(0, 1) == "0")
                                             {
                                                 Mtipo = "PTC";
@@ -1184,26 +1236,31 @@ namespace CargaEmbarques
                                             }
                                         }
                                     }
+
                                     #endregion
+
                                     #region VALIDA LECTURA DE ETIQUETA POR DESCARTE
+
                                     else if (V_Recibo == "" || mtar == "" || V_Prd == "" || Mtipo == "")
                                     {
                                         V_Tamaño = codigoetiqueta.Text.Trim().Length;
-
                                         int posstring = codigoetiqueta.Text.Trim().IndexOf(" ", 0);
 
                                         if (posstring > -1)
                                         {
                                             DataTable CatalogodeProducto = new DataTable();
+
                                             if (thisConnection.State == ConnectionState.Closed)
                                             {
                                                 thisConnection.Open();
                                             }
+
                                             string cade = "Select prod_clave,prod_nombre from tb_cat_producto where estatus = 'A' AND (prod_tipo = 'PTP' OR prod_tipo = 'PTC') order by LEN(prod_clave) DESC";
                                             SqlDataAdapter da = new SqlDataAdapter(cade, thisConnection);
                                             DataSet ds = new DataSet();
                                             da.Fill(ds, "CatalogodeProducto");
                                             CatalogodeProducto = ds.Tables["CatalogodeProducto"];
+
                                             if (thisConnection.State == ConnectionState.Open)
                                             {
                                                 thisConnection.Close();
@@ -1224,6 +1281,7 @@ namespace CargaEmbarques
                                             string restocaptura = "";
                                             int posprod = codigoetiqueta.Text.Trim().IndexOf(V_Prd);
                                             V_Recibo = codigoetiqueta.Text.Trim().Substring(0, posprod).Trim();
+
                                             if (V_Recibo.Length > 0 && V_Prd.Length > 0)
                                             {
                                                 restocaptura = codigoetiqueta.Text.Trim().Replace(V_Recibo, "").Replace(V_Prd, "");
@@ -1241,42 +1299,42 @@ namespace CargaEmbarques
                                             else
                                             {
                                                 Mtipo = "PTC";
-                                                //mcaj = restocaptura.Substring(4, 3);
-                                                //mtar = restocaptura.Substring(0, 2);
                                                 mtar = restocaptura.Trim();
                                             }
-                                            //mtar = restocaptura.Trim();
                                         }
                                         else
                                         {
                                             L_Cad = V_Tamaño - 9;
                                             Mtipo = "PTP";
                                             mtar = codigoetiqueta.Text.Trim().Substring(V_Tamaño - 3, 3);
+                                            V_Recibo = codigoetiqueta.Text.Trim().Substring(0, 6);
 
-                                            V_Recibo = codigoetiqueta.Text.Trim().Substring(0, 6); //no_lote
                                             if (V_Recibo.Substring(0, 1) == "0")
                                             {
                                                 Mtipo = "PTC";
                                                 V_Recibo = Convert.ToInt32(V_Recibo).ToString().Trim();
                                             }
-                                            V_Prd = codigoetiqueta.Text.Trim().Substring(6, L_Cad); //UCase(Mid(txtCod.Text, 7, L_Cad)) 'prod_clave
+
+                                            V_Prd = codigoetiqueta.Text.Trim().Substring(6, L_Cad);
                                         }
                                     }
+
                                     #endregion
                                 }
 
-
-
                                 V_Recibo = V_Recibo.TrimStart('0');
                                 mtar = mtar.TrimStart('0');
+
                                 //Asignar a Valores Globales
                                 FolioProducto = V_Recibo;
                                 TarimaProducto = mtar;
                                 ProductoProducto = V_Prd;
 
                                 #region VALIDA EL ESTATUS DE LA ORDEN DE PRODUCCION 
+
                                 string ordenProduccionEstatus = "";
                                 string campobd = "";
+
                                 if (thisConnection.State == ConnectionState.Closed)
                                 {
                                     thisConnection.Open();
@@ -1292,15 +1350,21 @@ namespace CargaEmbarques
                                     query = "Select ordp_estatus AS status From tb_mstr_ordenes_prod WHERE ordp_folio = '" + V_Recibo + "'";
                                     campobd = "ordp_estatus";
                                 }
+
                                 SqlCommand cmd = new SqlCommand(query);
                                 cmd.Connection = thisConnection;
-                                SqlDataReader Info;
-                                Info = cmd.ExecuteReader();
+                                SqlDataReader Info = cmd.ExecuteReader();
+
                                 while (Info.Read())
                                 {
                                     ordenProduccionEstatus = Info["status"].ToString().Trim();
                                 }
-                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                                if (thisConnection.State == ConnectionState.Open)
+                                {
+                                    thisConnection.Close();
+                                }
+
                                 if ((ordenProduccionEstatus == "F" && Mtipo == "PTC") || (ordenProduccionEstatus == "C" && Mtipo == "PTP"))
                                 {
                                     Android.App.AlertDialog.Builder alertDialog = new Android.App.AlertDialog.Builder(this);
@@ -1316,17 +1380,21 @@ namespace CargaEmbarques
                                     });
                                     alertDialog.Show();
                                 }
+
                                 #endregion
 
                                 #region VALIDA QUE LA ETIQUETA NO ESTE SURTIDA - PARTE 1
+
                                 if (thisConnection.State == ConnectionState.Closed)
                                 {
                                     thisConnection.Open();
                                 }
+
                                 query = "Select emb_folio, prod_clave, recibo, cajas, seccion, temp, tarima From tb_det_embarque WHERE emb_folio = '" + pedido.Text.Trim() + "' and prod_clave = '" + V_Prd + "' and recibo = '" + V_Recibo + "' and tarima = '" + mtar + "' and OpCap = 'N' and Estatus != 'C'";
                                 cmd = new SqlCommand(query);
                                 cmd.Connection = thisConnection;
                                 Info = cmd.ExecuteReader();
+
                                 while (Info.Read())
                                 {
                                     wrkcen = wrkcen + 1;
@@ -1334,25 +1402,38 @@ namespace CargaEmbarques
                                     Posicion.Text = Info["seccion"].ToString().Trim();
                                     Cajas.Text = Info["cajas"].ToString().Trim();
                                 }
-                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                                if (thisConnection.State == ConnectionState.Open)
+                                {
+                                    thisConnection.Close();
+                                }
+
                                 #endregion
 
                                 #region SE VALIDA EL NOMBRE DEL PRODUCTO PARA ESTABLECER LOS DIAS DE CADUCIDAD
+
                                 if (thisConnection.State == ConnectionState.Closed)
                                 {
                                     thisConnection.Open();
                                 }
+
                                 query = "SELECT prod_nombre FROM tb_cat_producto WHERE prod_clave = '" + V_Prd + "'";
                                 cmd = new SqlCommand(query);
                                 cmd.Connection = thisConnection;
                                 Info = cmd.ExecuteReader();
+
                                 while (Info.Read())
                                 {
                                     prod_nombre = Info["prod_nombre"].ToString().Trim();
                                 }
-                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                                if (thisConnection.State == ConnectionState.Open)
+                                {
+                                    thisConnection.Close();
+                                }
 
                                 int dias = 14;
+
                                 if (prod_nombre.Contains("BETABEL"))
                                 {
                                     dias = 60;
@@ -1361,14 +1442,18 @@ namespace CargaEmbarques
                                 {
                                     dias = 180;
                                 }
+
                                 if (prod_nombre.Contains("ADEREZO") || prod_nombre.Contains("VINAGRETA") || prod_nombre.Contains("QUESO"))
                                 {
                                     dias = 90;
                                 }
+
                                 #endregion
 
                                 #region VALIDA QUE LA ETIQUETA EXISTA
+
                                 V_Existe = "N";
+
                                 if (Mtipo == "PTP")
                                 {
                                     query = "Select a.folio,b.prod_nombre,a.num_cajas, a.cajas_sur, a.NUM_LOTE AS FECCAD, ISNULL(a.fechacad, FORMAT( DATEADD(day, " + dias + ", a.fecha), 'yyyyMMdd', 'en-US' )) AS fecha_cad, A.preautorizado From tb_det_eti_final A, tb_cat_producto B Where a.folio = '" + V_Recibo + "' and a.cve_prod = '" + V_Prd + "' and tarima = '" + mtar + "' and a.cve_prod = b.prod_clave order by b.prod_nombre";
@@ -1378,10 +1463,15 @@ namespace CargaEmbarques
                                     query = "Select RECIBO,prod_nombre,etiqueta,SURTIDO, FECHA_CAD AS FECCAD, (CASE fecha_cad WHEN '' THEN  FORMAT( DATEADD(day, " + dias + ", pti_fecha), 'dd/MM/yyyy', 'en-US' ) WHEN fecha_cad THEN fecha_cad END) AS fecha_cad, preautorizado From tb_det_trazabilidad Where RECIBO = '" + V_Recibo + "' and prod_clave = '" + V_Prd + "' and tarima = '" + Convert.ToInt32(mtar) + "' order by prod_nombre";
                                 }
 
-                                if (thisConnection.State == ConnectionState.Closed) { thisConnection.Open(); }
+                                if (thisConnection.State == ConnectionState.Closed)
+                                {
+                                    thisConnection.Open();
+                                }
+
                                 cmd = new SqlCommand(query);
                                 cmd.Connection = thisConnection;
                                 Info = cmd.ExecuteReader();
+
                                 while (Info.Read())
                                 {
                                     V_Existe = "S";
@@ -1389,7 +1479,11 @@ namespace CargaEmbarques
                                     fecha_cad = Info["fecha_cad"].ToString().Trim();
                                     preautorizado = Info["preautorizado"].ToString().Trim();
                                 }
-                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                                if (thisConnection.State == ConnectionState.Open)
+                                {
+                                    thisConnection.Close();
+                                }
 
                                 if (V_Existe == "N")
                                 {
@@ -1406,10 +1500,13 @@ namespace CargaEmbarques
                                     });
                                     alertDialog.Show();
                                 }
+
                                 #endregion
 
                                 #region VALIDA QUE LA ETIQUETA NO ESTE SURTIDA - PARTE 2
+
                                 ALTA = "A";
+
                                 if (wrkcen != 0)
                                 {
                                     Android.App.AlertDialog.Builder alertDialog = new Android.App.AlertDialog.Builder(this);
@@ -1417,6 +1514,7 @@ namespace CargaEmbarques
                                     alertDialog.SetIcon(Resource.Drawable.warning);
                                     alertDialog.SetCancelable(false);
                                     alertDialog.SetMessage(Html.FromHtml("<font color='#000000' size = 10>EL CODIGO YA SE HA REGISTRADO, ¿DESEA MODIFICARLO?</font>"));
+
                                     alertDialog.SetPositiveButton("Modificar", (senderAlert, args) =>
                                     {
                                         ALTA = "M";
@@ -1431,14 +1529,17 @@ namespace CargaEmbarques
                                         temperatura.Text = "";
                                         Posicion.Text = "";
                                         codigoetiqueta.RequestFocus();
+
                                         InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
                                         imm.ShowSoftInput(codigoetiqueta, ShowFlags.Implicit);
                                         return;
                                     });
                                 }
+
                                 #endregion
 
                                 #region VALIDA VIDA ANAQUEL DE UN PRODUCTO POR CLIENTE
+
                                 if (validaVidaAnaquel == "1")
                                 {
                                     //Obtiene la cantidad de dias que faltan para su fecha de caducidad
@@ -1447,49 +1548,56 @@ namespace CargaEmbarques
                                     int diasMinimos = getDiasMinimos(V_Prd, cnte_clave, cve_subcli, ProductosVidaAnaquel);
 
                                     #region diasFechaCaducidad ES MENOR QUE diasMinimos
+
                                     if (diasFechaCaducidad < diasMinimos)
                                     {
                                         string ReciboAtrazado = LoteAtrazadoVAPP(V_Prd, Mtipo, mtar, fecha_cad, dias, diasMinimos);
-                                        if (thisConnection.State == ConnectionState.Closed) { thisConnection.Open(); }
+
+                                        if (thisConnection.State == ConnectionState.Closed)
+                                        {
+                                            thisConnection.Open();
+                                        }
+
                                         FolioAtrazadoVAPP(V_Prd, Mtipo, V_Recibo, dias, diasMinimos);
                                         string autorizarec = "";
+
                                         if (ReciboAtrazado.Trim().Length > 0)
                                         {
                                             if (V_Recibo != "0")
                                             {
                                                 #region VALIDACION POR NIVEL SUPERIOR
                                                 #region ENVIAR NOTIFICACION TEAMS
+
                                                 // Instanciar la clase con el Webhook
                                                 notiTeams = new TeamsNotifier("https://mrluckycommx.webhook.office.com/webhookb2/10baebcf-a990-473a-b619-4c0902d824bd@d20460dd-675d-4b51-87cc-9d10f9175633/IncomingWebhook/a3c759e44abc4a9e83eb693cf604b0e0/bbba0cb3-31d4-4d5a-ac47-264700d7b7d0/V2YNn6avVMmBQOeCJ19fSVRNzO81iARPHZ1pwzl5QmfeA1");
-                                                // Enviar mensaje al iniciar la aplicación (de manera sincrónica)
-                                                //notiTeams.SendMessageToTeamsSync("📢 La aplicación ha sido iniciada.");
-                                                string cardJsonWithButtons =
-                                                    @"{
-                    ""type"": ""AdaptiveCard"",
-                    ""version"": ""1.0"",
-                    ""body"": [
-                        {
-                            ""type"": ""TextBlock"",
-                            ""text"": ""¿Deseas realizar esta acción?""
-                        },
-                        {
-                            ""type"": ""ActionSet"",
-                            ""actions"": [
-                        {
-                            ""type"": ""Action.OpenUrl"",
-                            ""title"": ""Sí, quiero"",
-                            ""url"": ""https://www.ejemplo.com""
-                        },
-                        {
-                            ""type"": ""Action.OpenUrl"",
-                            ""title"": ""No, gracias"",
-                            ""url"": ""https://www.ejemplo.com/no""
-                        }
-                            ]
-                        }
-                    ]
-                }";
+
+                                                string cardJsonWithButtons = @"{
+        ""type"": ""AdaptiveCard"",
+        ""version"": ""1.0"",
+        ""body"": [
+            {
+                ""type"": ""TextBlock"",
+                ""text"": ""¿Deseas realizar esta acción?""
+            },
+            {
+                ""type"": ""ActionSet"",
+                ""actions"": [
+            {
+                ""type"": ""Action.OpenUrl"",
+                ""title"": ""Sí, quiero"",
+                ""url"": ""https://www.ejemplo.com""
+            },
+            {
+                ""type"": ""Action.OpenUrl"",
+                ""title"": ""No, gracias"",
+                ""url"": ""https://www.ejemplo.com/no""
+            }
+                ]
+            }
+        ]
+    }";
                                                 notiTeams.SendAdaptiveCard(cardJsonWithButtons);
+
                                                 #endregion
                                                 #endregion
 
@@ -1506,6 +1614,7 @@ namespace CargaEmbarques
                                                     "<b>FECHA CADUCIDAD:</b> " + FechaAtrasada + "<br><br>" +
                                                     "</font>"
                                                 ));
+
                                                 alertcaducidad.SetNeutralButton("OK", (senderAlert, args) =>
                                                 {
                                                     codigoetiqueta.Text = "";
@@ -1514,26 +1623,39 @@ namespace CargaEmbarques
                                                     temperatura.Text = "";
                                                     Posicion.Text = "";
                                                     codigoetiqueta.RequestFocus();
+
                                                     InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
                                                     imm.ShowSoftInput(codigoetiqueta, ShowFlags.Implicit);
-                                                    if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                                                    if (thisConnection.State == ConnectionState.Open)
+                                                    {
+                                                        thisConnection.Close();
+                                                    }
                                                     return;
                                                 });
+
                                                 alertcaducidad.Show();
-                                                //continuacion del proceso en caso de que se autorice todo bien
                                             }
                                         }
                                     }
+
                                     #endregion
+
                                     #region diasFechaCaducidad ES MAYOR IGUAL QUE diasMinimos
+
                                     if (diasFechaCaducidad >= diasMinimos)
                                     {
                                         #region VALIDACION FIFO
+
                                         string ReciboAtrazado = LoteAtrazadoVAPP(V_Prd, Mtipo, mtar, fecha_cad, dias, diasMinimos);
-                                        if (thisConnection.State == ConnectionState.Closed) { thisConnection.Open(); }
+
+                                        if (thisConnection.State == ConnectionState.Closed)
+                                        {
+                                            thisConnection.Open();
+                                        }
+
                                         FolioAtrazadoVAPP(V_Prd, Mtipo, V_Recibo, dias, diasMinimos);
 
-                                        string autorizarec = "";
                                         if (ReciboAtrazado.Trim().Length > 0)
                                         {
                                             if (V_Recibo != "0")
@@ -1543,6 +1665,7 @@ namespace CargaEmbarques
                                                 alertcaducidad.SetIcon(Resource.Drawable.warning);
                                                 alertcaducidad.SetCancelable(false);
                                                 alertcaducidad.SetMessage(Html.FromHtml("<font color='#000000' size = 10>¿HAY UN RECIBO MAS ATRASADO PARA EL PRODUCTO " + prod_nombre.Trim() + " DESEA TOMAR ESTE RECIBO ? FOLIO : " + FolioAtrasado + " DE LA TARIMA " + TarimaAtrasada + ", CON FECHA DE CADUCIDAD " + FechaAtrasada + ", DE LO CONTRARIO SE DEBE AUTORIZAR EL RECIBO ACTUAL</font>"));
+
                                                 alertcaducidad.SetPositiveButton("Autorizar", (senderAlert, args) =>
                                                 {
                                                     FolioLeido = V_Recibo;
@@ -1550,109 +1673,21 @@ namespace CargaEmbarques
                                                     FechaLeido = fecha_cad;
                                                     Producto = prod_nombre;
                                                     Productocve = V_Prd;
-                                                    autorizarec = "1";
                                                     alertcaducidad.Dispose();
 
-                                                    View view = LayoutInflater.Inflate(Resource.Layout.AutorizarFolios, null);
-                                                    AlertDialog builder = new AlertDialog.Builder(this).Create();
-                                                    builder.SetView(view);
-                                                    builder.SetCanceledOnTouchOutside(false);
-                                                    builder.SetCancelable(false);
-
-                                                    password = view.FindViewById<EditText>(Resource.Id.passwordAutoriza);
-                                                    password.LongClickable = false;
-
-                                                    Spinner motivoautoriza = view.FindViewById<Spinner>(Resource.Id.motivoautoriza);
-                                                    System.Collections.ArrayList listaFrutas2 = new System.Collections.ArrayList();
-
-                                                    string[] camotivosrs = { "Folio Adelantado Requerido Por Cliente", "Folio Adelantado Caja Inexistente", "Folio Adelantado Caja No Encontrada", "Folio Adelantado No Apto Para Carga" };
-
-                                                    Collections.AddAll(listaFrutas2, camotivosrs);
-                                                    comboAdapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleSpinnerItem, camotivosrs);
-                                                    motivoautoriza.Adapter = comboAdapter;
-                                                    motivoautoriza.ItemSelected += new EventHandler<AdapterView.ItemSelectedEventArgs>(motivoautoriza_ItemSelected2);
-
-                                                    password.LongClickable = false;
-                                                    password.RequestFocus();
-                                                    InputMethodManager immD = (InputMethodManager)GetSystemService(Context.InputMethodService);
-                                                    immD.ShowSoftInput(password, ShowFlags.Implicit);
-
-                                                    Button buttonaceptar = view.FindViewById<Button>(Resource.Id.CargarTarima);
-                                                    Button button = view.FindViewById<Button>(Resource.Id.CanCarTar);
-                                                    button.Click += delegate
-                                                    {
-                                                        Borrar();
-                                                        password.Text = "";
-                                                        builder.Dismiss();
-                                                        return;
-                                                    };
-                                                    string OK = "N";
-                                                    buttonaceptar.Click += delegate
-                                                    {
-                                                        if (thisConnection.State == ConnectionState.Closed)
-                                                        {
-                                                            thisConnection.Open();
-                                                        }
-                                                        string cadena = "Select usuario From tb_Autoriza_OdeP Where password = '" + password.Text.Trim().ToUpper() + "' AND clave = 'EM' AND obs = 'Autoriza Caducidad'";
-                                                        cmd = new SqlCommand(cadena, thisConnection);
-                                                        mAutoriza = Convert.ToString(cmd.ExecuteScalar());
-                                                        if (mAutoriza.Trim().Length > 0)
-                                                        {
-                                                            if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                                            OK = "S";
-                                                            AutoPed = "S";
-                                                        }
-                                                        else
-                                                        {
-                                                            Toast.MakeText(this, "PASSWORD INCORRECTO!!!", ToastLength.Short).Show();
-                                                            password.Text = "";
-                                                            password.RequestFocus();
-                                                            thisConnection.Close();
-                                                        }
-
-                                                        if (mAutoriza.Trim() == "USER X")
-                                                        {
-                                                            if (thisConnection.State == ConnectionState.Closed)
-                                                            {
-                                                                thisConnection.Open();
-                                                            }
-                                                            cadena = "SELECT CASE When (SELECT DATENAME(dw, GETDATE())) = 'Domingo' THEN '1' WHEN ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) < (SELECT Convert(datetime,'07:00:00', 108) HoraServidor)) OR ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) > (SELECT Convert(datetime,'22:00:00', 108) HoraServidor)) THEN '1' WHEN ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) > (SELECT Convert(datetime,'10:24:00', 108) HoraServidor)) AND ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) < (SELECT Convert(datetime,'11:06:00', 108) HoraServidor)) THEN '1' WHEN ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) > (SELECT Convert(datetime,'17:54:00', 108) HoraServidor)) AND ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) < (SELECT Convert(datetime,'18:36:00', 108) HoraServidor)) THEN '1' ELSE '2' END";
-                                                            cmd = new SqlCommand(cadena, thisConnection);
-                                                            string dia = "";
-                                                            dia = Convert.ToString(cmd.ExecuteScalar());
-                                                            if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                                            if (dia.Trim() == "1")
-                                                            {
-                                                                OK = "S";
-                                                            }
-                                                            else
-                                                            {
-                                                                OK = "NS";
-                                                            }
-                                                        }
-
-                                                        if (OK == "N")
-                                                        {
-                                                            Toast.MakeText(this, "PASSWORD INCORRECTO!!!", ToastLength.Short).Show();
-                                                            password.Text = "";
-                                                            password.RequestFocus();
-
-                                                        }
-                                                        else if (OK == "NS")
-                                                        {
-                                                            Toast.MakeText(this, "El USUARIO X No esta habilitado para autorizar a esta hora, la hora de autorizacion es de 10:00 PM a 07:00 AM De Lunes A Sabado y Domingos Todo el dia", ToastLength.Long).Show();
-                                                            password.Text = "";
-                                                            password.RequestFocus();
-                                                        }
-                                                        else
-                                                        {
-                                                            string responsableAjuste = responsable.Trim().Length > 25 ? responsable.Trim().Substring(0, 25) : responsable.Trim();
-                                                            ConsultaInserFolioAdelantado = "insert into tb_det_folio_adelantado (responsable, fecha, emb_folio, recibo_cap, fecreccap, recibo_sug, fecrecsug, prod_clave, producto, cantidad, autorizo, tarimacap, tarimasug, imei, motivo, fechareal) values ('" + responsableAjuste.Trim() + "','" + DateTime.Now.ToString("dd/MM/yyyy hh:mm:ss tt") + "','" + pedido.Text + "', '" + FolioLeido.Trim() + "', '" + FechaLeido + "','" + FolioAtrasado + "', '" + FechaAtrasada + "', '" + Productocve + "', '" + Producto + "', '" + CajasDisp + "', '" + mAutoriza.Trim() + "', '" + TarimaLeido + "', '" + TarimaAtrasada.Trim() + "', '" + imei.Trim() + "', '" + motivoautorizafechaadelantada.Trim() + "', GETDATE())";
-                                                            builder.Dismiss();
-                                                        }
-                                                    };
-                                                    builder.Show();
+                                                    MostrarDialogoATU(
+                                                        motivo: motivoautorizafechaadelantada.Trim(),
+                                                        folioLeido: FolioLeido,
+                                                        fechaLeido: FechaLeido,
+                                                        folioAtrasado: FolioAtrasado,
+                                                        fechaAtrasada: FechaAtrasada,
+                                                        productocve: Productocve,
+                                                        producto: Producto,
+                                                        cajasDisp: CajasDisp,
+                                                        tarimaLeido: TarimaLeido,
+                                                        tarimaAtrasada: TarimaAtrasada);
                                                 });
+
                                                 alertcaducidad.SetNegativeButton("Cancelar", (senderAlert, args) =>
                                                 {
                                                     codigoetiqueta.Text = "";
@@ -1661,182 +1696,40 @@ namespace CargaEmbarques
                                                     temperatura.Text = "";
                                                     Posicion.Text = "";
                                                     codigoetiqueta.RequestFocus();
+
                                                     InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
                                                     imm.ShowSoftInput(codigoetiqueta, ShowFlags.Implicit);
-                                                    if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                                                    if (thisConnection.State == ConnectionState.Open)
+                                                    {
+                                                        thisConnection.Close();
+                                                    }
                                                     return;
                                                 });
+
                                                 alertcaducidad.Show();
-                                                //continuacion del proceso en caso de que se autorice todo bien
                                             }
                                         }
+
                                         #endregion
                                     }
+
                                     #endregion
                                 }
                                 else
                                 {
                                     #region VALIDACION DE FOLIOS ATRAZADOS
+
                                     string RecAtra = LoteAtrazado(V_Prd, Mtipo, mtar, fecha_cad, dias);
 
-                                    if (thisConnection.State == ConnectionState.Closed) { thisConnection.Open(); }
-                                    #region comentarios
-                                    //Cadena = "SELECT CASE When (DATEADD(DAY, "+pdn_diasmin+", GETDATE()) > (SELECT Cast('" + fecha_cad + "' as datetime))) Then '1' Else '0' End";
-                                    /*Cadena = "SELECT CASE When(DATEADD(DAY, " + pdn_diasmin + ",  CONVERT(date, getdate())) > (SELECT Cast('" + fecha_cad + "' as date))) Then '1' Else '0' End";
-                                    SqlCommand cmdx = new SqlCommand(Cadena, thisConnection);
-                                    string caducidad = cmdx.ExecuteScalar().ToString();
-                                    if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                    if (caducidad == "1" && preautorizado != "A")
+                                    if (thisConnection.State == ConnectionState.Closed)
                                     {
-                                        if (Mtipo == "PTP")
-                                        {
-                                            Android.App.AlertDialog.Builder alertDialogx = new Android.App.AlertDialog.Builder(this);
-                                            alertDialogx.SetTitle(Html.FromHtml("<font color='#DF0101' size = 10>Fecha Corta Detectada</font>"));
-                                            alertDialogx.SetIcon(Resource.Drawable.no);
-                                            alertDialogx.SetCancelable(false);
-                                            alertDialogx.SetMessage(Html.FromHtml("<font color='#000000' size = 10>Se detecto fecha corta en el recibo actual, ¿DESEA TOMAR ESTE RECIBO?, SE DEBERA AUTORIZAR</font>"));
-                                            alertDialogx.SetPositiveButton("Autorizar", (senderAlert, args) =>
-                                            {
-                                                alertDialogx.Dispose();
-                                                string estadodecontraseña = "";
-                                                et = new EditText(this);
-                                                et.InputType = Android.Text.InputTypes.TextVariationPassword | Android.Text.InputTypes.ClassText;
-                                                et.LongClickable = false;
-                                                et.Hint = "Password";
-                                                AlertDialog.Builder ad = new AlertDialog.Builder(this);
-                                                ad.SetTitle("Autorizacion Folios Adelantados");
-                                                ad.SetCancelable(false);
-                                                ad.SetView(et);
-                                                ad.SetPositiveButton(Html.FromHtml("<font face = 'Comic Sans MS, arial' color='#DF0101' size = '10'>Guardar</font>"), (sender, e) =>
-                                                {
-                                                    if (thisConnection.State == ConnectionState.Closed)
-                                                    {
-                                                        thisConnection.Open();
-                                                    }
-                                                    string cadena = "Select usuario From tb_Autoriza_OdeP Where password = '" + et.Text.Trim().ToUpper() + "' AND clave = 'EM' AND obs = 'Autoriza Caducidad'";
-                                                    cmd = new SqlCommand(cadena, thisConnection);
-                                                    mAutoriza = Convert.ToString(cmd.ExecuteScalar());
-                                                    if (mAutoriza.Trim().Length == 0)
-                                                    {
-                                                        Toast.MakeText(this, "PASSWORD INCORRECTO!!!", ToastLength.Short).Show();
-                                                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                                    }
-                                                    else
-                                                    {
-                                                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                                        estadodecontraseña = "S";
-                                                    }
-
-                                                    if (mAutoriza.Trim() == "USER X")
-                                                    {
-                                                        if (thisConnection.State == ConnectionState.Closed)
-                                                        {
-                                                            thisConnection.Open();
-                                                        }
-                                                        cadena = "SELECT CASE When (SELECT DATENAME(dw, GETDATE())) = 'Domingo' THEN '1' WHEN ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) < (SELECT Convert(datetime,'07:00:00', 108) HoraServidor)) OR ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) > (SELECT Convert(datetime,'22:00:00', 108) HoraServidor)) THEN '1' WHEN ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) > (SELECT Convert(datetime,'10:24:00', 108) HoraServidor)) AND ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) < (SELECT Convert(datetime,'11:06:00', 108) HoraServidor)) THEN '1' WHEN ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) > (SELECT Convert(datetime,'17:54:00', 108) HoraServidor)) AND ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) < (SELECT Convert(datetime,'18:36:00', 108) HoraServidor)) THEN '1' ELSE '2' END";
-                                                        cmd = new SqlCommand(cadena, thisConnection);
-                                                        string dia = "";
-                                                        dia = Convert.ToString(cmd.ExecuteScalar());
-                                                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                                        if (dia.Trim() == "1")
-                                                        {
-                                                            estadodecontraseña = "S";
-                                                        }
-                                                        else
-                                                        {
-                                                            estadodecontraseña = "NS";
-                                                        }
-                                                    }
-
-                                                    if (estadodecontraseña == "N")
-                                                    {
-                                                        Toast.MakeText(this, "PASSWORD INCORRECTO!!!", ToastLength.Short).Show();
-                                                        et.Text = "";
-                                                        et.RequestFocus();
-
-                                                    }
-                                                    else if (estadodecontraseña == "NS")
-                                                    {
-                                                        Toast.MakeText(this, "El USUARIO X No esta habilitado para autorizar a esta hora, la hora de autorizacion es de 10:00 PM a 07:00 AM De Lunes A Sabado y Domingos Todo el dia", ToastLength.Long).Show();
-                                                        et.Text = "";
-                                                        et.RequestFocus();
-                                                    }
-                                                    else
-                                                    {
-                                                        ConsultaInserFolioAdelantado = "insert into tb_det_folio_adelantado (responsable, fecha, emb_folio, recibo_cap, fecreccap, recibo_sug, fecrecsug, prod_clave, producto, cantidad, autorizo, tarimacap, tarimasug, imei, motivo) values ('SUPERVISOR',GETDATE(),'" + V_Recibo.Trim() + "', '" + FolioLeido.Trim() + "', '" + FechaLeido + "','" + FolioAtrasado + "', '" + FechaAtrasada + "', '" + Productocve + "', '" + Producto + "', '" + CajasDisp + "', '" + mAutoriza.Trim() + "', '" + TarimaLeido + "', '" + TarimaAtrasada.Trim() + "', '" + Version.Trim() + "', '" + motivoautorizafechaadelantada.Trim() + "')";
-                                                    }
-                                                });
-                                                ad.SetNegativeButton(Html.FromHtml("<font face = 'Comic Sans MS, arial' color='#DF0101' size = '10'>Cancelar</font>"), (sender, e) =>
-                                                {
-                                                    codigoetiqueta.Text = "";
-                                                    ClaveAnden.Text = "";
-                                                    Cajas.Text = "";
-                                                    temperatura.Text = "";
-                                                    Posicion.Text = "";
-                                                    ClaveAnden.RequestFocus();
-                                                    return;
-                                                });
-                                                RunOnUiThread(() => ad.Show());
-                                            });
-
-                                            alertDialogx.SetNegativeButton("Cancelar", (senderAlert, args) =>
-                                            {
-                                                codigoetiqueta.Text = "";
-                                                ClaveAnden.Text = "";
-                                                Cajas.Text = "";
-                                                temperatura.Text = "";
-                                                Posicion.Text = "";
-                                                ClaveAnden.RequestFocus();
-                                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                                return;
-                                            });
-                                            alertDialogx.Show();
-
-                                        }
-                                        else
-                                        {
-                                            Android.App.AlertDialog.Builder alertDialogx = new Android.App.AlertDialog.Builder(this);
-                                            alertDialogx.SetTitle(Html.FromHtml("<font color='#DF0101' size = 10>Fecha Corta En Campo Detectada</font>"));
-                                            alertDialogx.SetIcon(Resource.Drawable.no);
-                                            alertDialogx.SetCancelable(false);
-                                            alertDialogx.SetMessage(Html.FromHtml("<font color='#000000' size = 10>La tarima actual de Campo tiene fecha corta y no esta autorizada para carga, Favor de Informar a Personal de Camaras Frias</font>"));
-                                            alertDialogx.SetNeutralButton("Ok", delegate
-                                            {
-                                                alertDialogx.Dispose();
-                                                codigoetiqueta.Text = "";
-                                                ClaveAnden.Text = "";
-                                                Cajas.Text = "";
-                                                temperatura.Text = "";
-                                                Posicion.Text = "";
-                                                ClaveAnden.RequestFocus();
-                                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                                return;
-                                            });
-                                            alertDialogx.Show();
-                                        }
-                                        CantidadDisponibleTarima();
-                                        codigoetiqueta.Enabled = false;
-                                        temperatura.Enabled = true;
-                                        //temperatura.RequestFocus();
-                                        InputMethodManager immx = (InputMethodManager)GetSystemService(Context.InputMethodService);
-                                        immx.ShowSoftInput(temperatura, ShowFlags.Implicit);
-                                        //return;
+                                        thisConnection.Open();
                                     }
-                                    else
-                                    {
-
-
-
-
-
-
-                                    }*/
-                                    #endregion
 
                                     //METODO UTILIZADO PARA MOSTRAR EN PANTALLA LOS FOLIOS ATRAZADOS DISPONIBLES A SURTIR
                                     FolioAtrazado(V_Prd, Mtipo, V_Recibo);
 
-                                    string autorizarec = "";
                                     if (RecAtra.Trim().Length > 0)
                                     {
                                         if (V_Recibo != "0")
@@ -1846,6 +1739,7 @@ namespace CargaEmbarques
                                             alertcaducidad.SetIcon(Resource.Drawable.warning);
                                             alertcaducidad.SetCancelable(false);
                                             alertcaducidad.SetMessage(Html.FromHtml("<font color='#000000' size = 10>¿HAY UN RECIBO MAS ATRASADO PARA EL PRODUCTO " + prod_nombre.Trim() + " DESEA TOMAR ESTE RECIBO ? FOLIO : " + FolioAtrasado + " DE LA TARIMA " + TarimaAtrasada + ", CON FECHA DE CADUCIDAD " + FechaAtrasada + ", DE LO CONTRARIO SE DEBE AUTORIZAR EL RECIBO ACTUAL</font>"));
+
                                             alertcaducidad.SetPositiveButton("Autorizar", (senderAlert, args) =>
                                             {
                                                 FolioLeido = V_Recibo;
@@ -1853,110 +1747,21 @@ namespace CargaEmbarques
                                                 FechaLeido = fecha_cad;
                                                 Producto = prod_nombre;
                                                 Productocve = V_Prd;
-                                                autorizarec = "1";
                                                 alertcaducidad.Dispose();
 
-
-                                                View view = LayoutInflater.Inflate(Resource.Layout.AutorizarFolios, null);
-                                                AlertDialog builder = new AlertDialog.Builder(this).Create();
-                                                builder.SetView(view);
-                                                builder.SetCanceledOnTouchOutside(false);
-                                                builder.SetCancelable(false);
-
-                                                password = view.FindViewById<EditText>(Resource.Id.passwordAutoriza);
-                                                password.LongClickable = false;
-
-                                                Spinner motivoautoriza = view.FindViewById<Spinner>(Resource.Id.motivoautoriza);
-                                                System.Collections.ArrayList listaFrutas2 = new System.Collections.ArrayList();
-
-                                                string[] camotivosrs = { "Requerido Por Cliente", "Caja Inexistente", "Caja No Encontrada", "No Apto Para Carga" };
-
-                                                Collections.AddAll(listaFrutas2, camotivosrs);
-                                                comboAdapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleSpinnerItem, camotivosrs);
-                                                motivoautoriza.Adapter = comboAdapter;
-                                                motivoautoriza.ItemSelected += new EventHandler<AdapterView.ItemSelectedEventArgs>(motivoautoriza_ItemSelected2);
-
-                                                password.LongClickable = false;
-                                                password.RequestFocus();
-                                                InputMethodManager immD = (InputMethodManager)GetSystemService(Context.InputMethodService);
-                                                immD.ShowSoftInput(password, ShowFlags.Implicit);
-
-                                                Button buttonaceptar = view.FindViewById<Button>(Resource.Id.CargarTarima);
-                                                Button button = view.FindViewById<Button>(Resource.Id.CanCarTar);
-                                                button.Click += delegate
-                                                {
-                                                    Borrar();
-                                                    password.Text = "";
-                                                    builder.Dismiss();
-                                                    return;
-                                                };
-                                                string OK = "N";
-                                                buttonaceptar.Click += delegate
-                                                {
-                                                    if (thisConnection.State == ConnectionState.Closed)
-                                                    {
-                                                        thisConnection.Open();
-                                                    }
-                                                    string cadena = "Select usuario From tb_Autoriza_OdeP Where password = '" + password.Text.Trim().ToUpper() + "' AND clave = 'EM' AND obs = 'Autoriza Caducidad'";
-                                                    cmd = new SqlCommand(cadena, thisConnection);
-                                                    mAutoriza = Convert.ToString(cmd.ExecuteScalar());
-                                                    if (mAutoriza.Trim().Length > 0)
-                                                    {
-                                                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                                        OK = "S";
-                                                        AutoPed = "S";
-                                                    }
-                                                    else
-                                                    {
-                                                        Toast.MakeText(this, "PASSWORD INCORRECTO!!!", ToastLength.Short).Show();
-                                                        password.Text = "";
-                                                        password.RequestFocus();
-                                                        thisConnection.Close();
-                                                    }
-
-                                                    if (mAutoriza.Trim() == "USER X")
-                                                    {
-                                                        if (thisConnection.State == ConnectionState.Closed)
-                                                        {
-                                                            thisConnection.Open();
-                                                        }
-                                                        cadena = "SELECT CASE When (SELECT DATENAME(dw, GETDATE())) = 'Domingo' THEN '1' WHEN ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) < (SELECT Convert(datetime,'07:00:00', 108) HoraServidor)) OR ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) > (SELECT Convert(datetime,'22:00:00', 108) HoraServidor)) THEN '1' WHEN ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) > (SELECT Convert(datetime,'10:24:00', 108) HoraServidor)) AND ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) < (SELECT Convert(datetime,'11:06:00', 108) HoraServidor)) THEN '1' WHEN ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) > (SELECT Convert(datetime,'17:54:00', 108) HoraServidor)) AND ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) < (SELECT Convert(datetime,'18:36:00', 108) HoraServidor)) THEN '1' ELSE '2' END";
-                                                        cmd = new SqlCommand(cadena, thisConnection);
-                                                        string dia = "";
-                                                        dia = Convert.ToString(cmd.ExecuteScalar());
-                                                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                                        if (dia.Trim() == "1")
-                                                        {
-                                                            OK = "S";
-                                                        }
-                                                        else
-                                                        {
-                                                            OK = "NS";
-                                                        }
-                                                    }
-
-                                                    if (OK == "N")
-                                                    {
-                                                        Toast.MakeText(this, "PASSWORD INCORRECTO!!!", ToastLength.Short).Show();
-                                                        password.Text = "";
-                                                        password.RequestFocus();
-
-                                                    }
-                                                    else if (OK == "NS")
-                                                    {
-                                                        Toast.MakeText(this, "El USUARIO X No esta habilitado para autorizar a esta hora, la hora de autorizacion es de 10:00 PM a 07:00 AM De Lunes A Sabado y Domingos Todo el dia", ToastLength.Long).Show();
-                                                        password.Text = "";
-                                                        password.RequestFocus();
-                                                    }
-                                                    else
-                                                    {
-                                                        string responsableAjuste = responsable.Trim().Length > 25 ? responsable.Trim().Substring(0, 25) : responsable.Trim();
-                                                        ConsultaInserFolioAdelantado = "insert into tb_det_folio_adelantado (responsable, fecha, emb_folio, recibo_cap, fecreccap, recibo_sug, fecrecsug, prod_clave, producto, cantidad, autorizo, tarimacap, tarimasug, imei, motivo, fechareal) values ('" + responsableAjuste.Trim() + "','" + DateTime.Now.ToString("dd/MM/yyyy hh:mm:ss tt") + "','" + pedido.Text + "', '" + FolioLeido.Trim() + "', '" + FechaLeido + "','" + FolioAtrasado + "', '" + FechaAtrasada + "', '" + Productocve + "', '" + Producto + "', '" + CajasDisp + "', '" + mAutoriza.Trim() + "', '" + TarimaLeido + "', '" + TarimaAtrasada.Trim() + "', '" + imei.Trim() + "', '" + motivoautorizafechaadelantada.Trim() + "', GETDATE())";
-                                                        builder.Dismiss();
-                                                    }
-                                                };
-                                                builder.Show();
+                                                MostrarDialogoATU(
+                                                    motivo: motivoautorizafechaadelantada.Trim(),
+                                                    folioLeido: FolioLeido,
+                                                    fechaLeido: FechaLeido,
+                                                    folioAtrasado: FolioAtrasado,
+                                                    fechaAtrasada: FechaAtrasada,
+                                                    productocve: Productocve,
+                                                    producto: Producto,
+                                                    cajasDisp: CajasDisp,
+                                                    tarimaLeido: TarimaLeido,
+                                                    tarimaAtrasada: TarimaAtrasada);
                                             });
+
                                             alertcaducidad.SetNegativeButton("Cancelar", (senderAlert, args) =>
                                             {
                                                 codigoetiqueta.Text = "";
@@ -1965,21 +1770,30 @@ namespace CargaEmbarques
                                                 temperatura.Text = "";
                                                 Posicion.Text = "";
                                                 codigoetiqueta.RequestFocus();
+
                                                 InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
                                                 imm.ShowSoftInput(codigoetiqueta, ShowFlags.Implicit);
-                                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                                                if (thisConnection.State == ConnectionState.Open)
+                                                {
+                                                    thisConnection.Close();
+                                                }
                                                 return;
                                             });
+
                                             alertcaducidad.Show();
-                                            //continuacion del proceso en caso de que se autorice todo bien
                                         }
                                     }
+
                                     #endregion
                                 }
+
                                 #endregion
 
                                 #region VALIDACION PARA LAS CAJAS DISPONIBLES POR TARIMA
+
                                 CantidadDisponibleTarima();
+
                                 if (v_dif == 0)
                                 {
                                     Android.App.AlertDialog.Builder alertDialog = new Android.App.AlertDialog.Builder(this);
@@ -1989,18 +1803,20 @@ namespace CargaEmbarques
                                     alertDialog.SetMessage(Html.FromHtml("<font color='#000000' size = 10>El Folio " + V_Recibo + " Producto " + V_Prd + " y Tarima " + mtar + ". No tiene cajas disponibles, favor de verificarlo</font>"));
                                     alertDialog.SetNeutralButton("Ok", delegate
                                     {
-                                        /*InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
-                                        imm.ShowSoftInput(codigoetiqueta, ShowFlags.Implicit);*/
-                                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-
+                                        if (thisConnection.State == ConnectionState.Open)
+                                        {
+                                            thisConnection.Close();
+                                        }
                                     });
                                     alertDialog.Show();
 
                                     codigoetiqueta.RequestFocus();
                                 }
+
                                 #endregion
 
                                 #region VALIDACION PARA LOS PRODUCTOS VALIDADOS SOLO CON ETIQUETA VERDE
+
                                 DataRow[] result = det_producto_sin_blanca.Select("prod_clave = '" + V_Prd.Trim() + "'");
 
                                 if (result.Count() == 0)
@@ -2008,14 +1824,10 @@ namespace CargaEmbarques
                                     codigoetiqueta.Enabled = false;
                                     confirmprod.Enabled = true;
                                     confirmprod.RequestFocus();
+
                                     #region FRAGMENTO PESO X EJES
                                     updatePesoPorEjes(Notrailer.Text, fecha.Text, FolioProducto, ProductoProducto, TarimaProducto, "", "");
                                     #endregion
-                                    //temperatura.Enabled = true;
-                                    //temperatura.RequestFocus();
-                                    //InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
-                                    //imm.ShowSoftInput(confirmprod, ShowFlags.Implicit);
-
                                 }
                                 else
                                 {
@@ -2023,22 +1835,26 @@ namespace CargaEmbarques
                                     confirmprod.Enabled = false;
                                     temperatura.Enabled = true;
                                     temperatura.RequestFocus();
+
                                     #region FRAGMENTO PESO X EJES
                                     updatePesoPorEjes(Notrailer.Text, fecha.Text, FolioProducto, ProductoProducto, TarimaProducto, "", "");
                                     #endregion
-                                    //InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
-                                    //imm.ShowSoftInput(temperatura, ShowFlags.Implicit);
                                 }
+
                                 #endregion
                             }
                         }
+
                         #endregion
+
                         #region VALIDACION PARA SPLITS EN EL CAMPO CLAVE DEL PRODUCTO
+
                         else
                         {
                             CapturaSplitActiva = "1";
                             codigoetiqueta.Text = codigoetiqueta.Text.Replace("SPLIT*", "");
                             string Pedidostring = codigoetiqueta.Text.Substring(0, 6);
+
                             if (Pedidostring == pedido.Text)
                             {
                                 codigoetiqueta.Text = codigoetiqueta.Text.Replace(Pedidostring + "*", "");
@@ -2047,6 +1863,7 @@ namespace CargaEmbarques
                                 confirmprod.Enabled = false;
                                 temperatura.Enabled = true;
                                 temperatura.RequestFocus();
+
                                 InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
                                 imm.ShowSoftInput(temperatura, ShowFlags.Implicit);
                             }
@@ -2057,6 +1874,7 @@ namespace CargaEmbarques
                                 codigoetiqueta.RequestFocus();
                             }
                         }
+
                         #endregion
                     }
                     else
@@ -2072,54 +1890,21 @@ namespace CargaEmbarques
                             codigoetiqueta.Text = "";
                         });
                         alertDialog.Show();
-
                     }
+
                     #endregion
+
                     #region CARGA EXCESIVA
+
                     if (CapturaSplitActiva == "0")
                     {
                         int pedidoactualvalidar = Convert.ToInt32(pedido.Text.Trim());
                         string tipoembval = "NAL";
+
                         if (pedidoactualvalidar < 500000)
                         {
                             tipoembval = "EXP";
                         }
-
-                        /*if (ValidarProductoEnPedido(V_Prd, tipoembval) != "") {
-                            Android.App.AlertDialog.Builder alertDialog = new Android.App.AlertDialog.Builder(this);
-                            alertDialog.SetTitle(Html.FromHtml("<font color='#DF0101' size = 10>PRODUCTO NO ESTA EN EL PEDIDO</font>"));
-                            alertDialog.SetIcon(Resource.Drawable.warning);
-                            alertDialog.SetCancelable(false);
-                            alertDialog.SetMessage(Html.FromHtml("<font color='#000000' size = 10>¿PRODUCTO NO ESTA EN EL PEDIDO, DESEA AGREGARLO?</font>"));
-                            alertDialog.SetPositiveButton("FORZAR CARGADO", (senderAlert, args) =>
-                            {
-                                if (thisConnection.State == ConnectionState.Closed)
-                                {
-                                    thisConnection.Open();
-                                }
-
-                                string Cadenaproductonoesta = "INSERT INTO TB_REGISTRO_MOVIMIENTOS(FECHA,NOM_COMPU,NOM_USU,TIPO_MOV,OP_CLAVE,FOLIO,DETALLE,SISTEMA,MOV_FOLIO) " +
-                                        "VALUES(GETDATE(),'CEL " + imei + "','" + responsable.Trim() + "','A','7.10','" +
-                                        pedido.Text.Trim() + "','Producto no esta en el pedido " + V_Prd + "','CARGAEMB','" + pedido.Text.Trim() + "')";
-                                SqlCommand cmdx = new SqlCommand(Cadenaproductonoesta, thisConnection);
-                                cmdx.ExecuteNonQuery();
-                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                alertDialog.Dispose();
-                            });
-
-                            alertDialog.SetNegativeButton("CANCELAR", (senderAlert, args) =>
-                            {
-                                codigoetiqueta.Text = "";
-                                ClaveAnden.Text = "";
-                                Cajas.Text = "";
-                                temperatura.Text = "";
-                                Posicion.Text = "";
-                                ClaveAnden.RequestFocus();
-                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                return;
-                            });
-                            alertDialog.Show();
-                        }*/
 
                         if (ValidarProd(V_Prd, tipoembval) == "CARGANDOMAS")
                         {
@@ -2128,6 +1913,7 @@ namespace CargaEmbarques
                             alertDialog.SetIcon(Resource.Drawable.warning);
                             alertDialog.SetCancelable(false);
                             alertDialog.SetMessage(Html.FromHtml("<font color='#000000' size = 10>LA SUMA DE LA CARGA ACTUAL ES MAYOR A LO PEDIDO POR VENTAS, ¿DESEA CONTINUAR?</font>"));
+
                             alertDialog.SetPositiveButton("FORZAR CARGADO", (senderAlert, args) =>
                             {
                                 if (thisConnection.State == ConnectionState.Closed)
@@ -2138,32 +1924,29 @@ namespace CargaEmbarques
                                 string Cadenaproductonoesta = "INSERT INTO TB_REGISTRO_MOVIMIENTOS(FECHA,NOM_COMPU,NOM_USU,TIPO_MOV,OP_CLAVE,FOLIO,DETALLE,SISTEMA,MOV_FOLIO) " +
                                         "VALUES(GETDATE(),'CEL " + imei + "','" + responsable.Trim() + "','A','7.10','" +
                                         pedido.Text.Trim() + "','Cargado mas pedido menos" + V_Prd + "','CARGAEMB','" + pedido.Text.Trim() + "')";
+
                                 SqlCommand cmdx = new SqlCommand(Cadenaproductonoesta, thisConnection);
                                 cmdx.ExecuteNonQuery();
 
-                                //string not = "Actualmente se esta cargando mas producto que el solicitado por ventas, en la orden " + pedido.Text.Trim() + " producto: " + V_Prd + "";
                                 string not = setBodyEmail(pedido.Text.Trim(), V_Prd);
-
-                                //var notificarcargaexcesiva = new WebServiceEmbarques.WebServiceEmbarques();
-                                //var notificarcargaexcesiva = new WSEmbarques.WebServiceEmbarques();
 
                                 if (INFO_FILE == "http://192.168.123.4:81/EmbarquesApk/estado_respaldo.txt")
                                 {
                                     notificarCargaExcesivaLocal.SendMail("ricardo.cortes@mrlucky.com.mx;ahernandez@mrlucky.com.mx;logistica@mrlucky.com.mx;jgalvan@mrlucky.com.mx", not, "CARGA EXCESIVA EN ORDEN DE EMBARQUES");
-                                    //notificarCargaExcesivaLocal.SendMail("jgalvan@mrlucky.com.mx", not, "CARGA EXCESIVA EN ORDEN DE EMBARQUES");
                                 }
                                 else
                                 {
                                     notificarCargaExcesiva.SendMail("ricardo.cortes@mrlucky.com.mx;ahernandez@mrlucky.com.mx;logistica@mrlucky.com.mx;jgalvan@mrlucky.com.mx", not, "CARGA EXCESIVA EN ORDEN DE EMBARQUES");
-                                    //notificarCargaExcesiva.SendMail("jgalvan@mrlucky.com.mx", not, "CARGA EXCESIVA EN ORDEN DE EMBARQUES");
                                 }
 
-                                //var notificarcargaexcesiva = new WSCargaEmbarques189.WebServiceEmbarques();
-                                //notificarcargaexcesiva.SendMail("ricardo.cortes@mrlucky.com.mx;ahernandez@mrlucky.com.mx;logistica@mrlucky.com.mx;jgalvan@mrlucky.com.mx", not, "CARGA EXCESIVA EN ORDEN DE EMBARQUES");
+                                if (thisConnection.State == ConnectionState.Open)
+                                {
+                                    thisConnection.Close();
+                                }
 
-                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
                                 alertDialog.Dispose();
                             });
+
                             alertDialog.SetNegativeButton("CANCELAR", (senderAlert, args) =>
                             {
                                 codigoetiqueta.Text = "";
@@ -2172,18 +1955,24 @@ namespace CargaEmbarques
                                 temperatura.Text = "";
                                 Posicion.Text = "";
                                 codigoetiqueta.RequestFocus();
+
                                 InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
                                 imm.ShowSoftInput(codigoetiqueta, ShowFlags.Implicit);
-                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                                if (thisConnection.State == ConnectionState.Open)
+                                {
+                                    thisConnection.Close();
+                                }
                                 return;
                             });
+
                             alertDialog.Show();
                         }
-                        //if (Convert.ToInt32(Cajas.Text.Trim()) <= 0)
+
                         int i = 0;
+
                         if (int.TryParse(Cajas.Text.Trim(), out i) == false)
                         {
-
                             Android.App.AlertDialog.Builder alertDialog = new Android.App.AlertDialog.Builder(this);
                             alertDialog.SetTitle(Html.FromHtml("<font color='#DF0101' size = 10>FOLIO SIN EXISTENCIA</font>"));
                             alertDialog.SetIcon(Resource.Drawable.no);
@@ -2191,22 +1980,18 @@ namespace CargaEmbarques
                             alertDialog.SetMessage(Html.FromHtml("<font color='#000000' size = 10>El Folio " + V_Recibo + " Producto " + V_Prd + " y Tarima " + mtar + ". No tiene cajas disponibles, favor de verificarlo</font>"));
                             alertDialog.SetNeutralButton("Ok", delegate
                             {
-                                //codigoetiqueta.Text = "";
-                                //confirmprod.Text = "";
-                                //codigoetiqueta.Text = "";
-                                //Cajas.Text = "";
-                                //temperatura.Text = "";
-                                //Posicion.Text = "";
-                                //codigoetiqueta.RequestFocus();
-                                /*InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
-                                imm.ShowSoftInput(codigoetiqueta, ShowFlags.Implicit);*/
-                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+                                if (thisConnection.State == ConnectionState.Open)
+                                {
+                                    thisConnection.Close();
+                                }
                                 return;
                             });
                             alertDialog.Show();
                         }
                     }
+
                     #endregion
+
                     ex.Handled = true;
                 }
                 else if ((ex.Event.Action == KeyEventActions.Down && ex.KeyCode == Keycode.Del) || (ex.Event.Action == KeyEventActions.Down && ex.KeyCode == Keycode.ForwardDel))
@@ -2218,6 +2003,7 @@ namespace CargaEmbarques
                     ex.Handled = false;
                 }
             };
+
 
             pedido.KeyPress += Pedido_KeyPress;
 
@@ -8079,17 +7865,17 @@ namespace CargaEmbarques
 
         void ILocationListener.OnProviderDisabled(string provider)
         {
-            //throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
         void ILocationListener.OnProviderEnabled(string provider)
         {
-            //throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
         void ILocationListener.OnStatusChanged(string provider, Availability status, Bundle extras)
         {
-            //throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
         #region NUEVA VALIDACION DE ETIQUETAS VERDES
@@ -8944,7 +8730,7 @@ namespace CargaEmbarques
 
         #region ATU
         // Agrega este método en tu Activity, junto a los otros métodos existentes
-        private void MostrarDialogoATU(
+        private void MostrarDialogoATUOG(
             string motivo,
             // Todos estos ya los tienes como variables en el scope del KeyPress:
             string folioLeido, string fechaLeido,
@@ -9082,7 +8868,7 @@ namespace CargaEmbarques
             dialog.Show();
 
             // Override del botón para no cerrar automáticamente
-            dialog.GetButton((int)Android.Content.DialogInterface.DialogButtonPositive)
+            dialog.GetButton((int)Android.Content.DialogButtonType.Positive)
                   .Click += (s, e) =>
                   {
                       string otpIngresado = txtOTP.Text.Trim();
@@ -9101,7 +8887,7 @@ namespace CargaEmbarques
                       }
 
                       // Deshabilitar mientras valida
-                      dialog.GetButton((int)Android.Content.DialogInterface.DialogButtonPositive).Enabled = false;
+                      dialog.GetButton((int)Android.Content.DialogButtonType.Positive).Enabled = false;
                       Toast.MakeText(this, "⏳ Validando código...", ToastLength.Short).Show();
 
                       Task.Run(async () =>
@@ -9153,7 +8939,7 @@ namespace CargaEmbarques
                                     txtOTP.Text = "";
                                     txtOTP.RequestFocus();
                                     dialog.GetButton(
-                                        (int)Android.Content.DialogInterface.DialogButtonPositive
+                                        (int)Android.Content.DialogButtonType.Positive
                                     ).Enabled = true;
                                 })
                               .SetCancelable(false)
@@ -9163,6 +8949,470 @@ namespace CargaEmbarques
                       });
                   };
         }
+
+        #region ATU Legacy Password Dialog
+        private void MostrarDialogoPasswordLegacy(
+            string motivo,
+            string folioLeido, string fechaLeido,
+            string folioAtrasado, string fechaAtrasada,
+            string productocve, string producto,
+            string cajasDisp, string tarimaLeido,
+            string tarimaAtrasada)
+        {
+            View view = LayoutInflater.Inflate(Resource.Layout.AutorizarFolios, null);
+            AlertDialog builder = new AlertDialog.Builder(this).Create();
+            builder.SetView(view);
+            builder.SetCanceledOnTouchOutside(false);
+            builder.SetCancelable(false);
+
+            password = view.FindViewById<EditText>(Resource.Id.passwordAutoriza);
+            password.LongClickable = false;
+
+            Spinner motivoautoriza = view.FindViewById<Spinner>(Resource.Id.motivoautoriza);
+            System.Collections.ArrayList listaFrutas2 = new System.Collections.ArrayList();
+
+            string[] camotivosrs = { "Folio Adelantado Requerido Por Cliente", "Folio Adelantado Caja Inexistente", "Folio Adelantado Caja No Encontrada", "Folio Adelantado No Apto Para Carga" };
+
+            Collections.AddAll(listaFrutas2, camotivosrs);
+            comboAdapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleSpinnerItem, camotivosrs);
+            motivoautoriza.Adapter = comboAdapter;
+            motivoautoriza.ItemSelected += new EventHandler<AdapterView.ItemSelectedEventArgs>(motivoautoriza_ItemSelected2);
+
+            password.LongClickable = false;
+            password.RequestFocus();
+            InputMethodManager immD = (InputMethodManager)GetSystemService(Context.InputMethodService);
+            immD.ShowSoftInput(password, ShowFlags.Implicit);
+
+            Button buttonaceptar = view.FindViewById<Button>(Resource.Id.CargarTarima);
+            Button button = view.FindViewById<Button>(Resource.Id.CanCarTar);
+
+            button.Click += delegate
+            {
+                Borrar();
+                password.Text = "";
+                builder.Dismiss();
+                return;
+            };
+
+            string OK = "N";
+            buttonaceptar.Click += delegate
+            {
+                if (thisConnection.State == ConnectionState.Closed)
+                {
+                    thisConnection.Open();
+                }
+
+                string cadena = "Select usuario From tb_Autoriza_OdeP Where password = '" + password.Text.Trim().ToUpper() + "' AND clave = 'EM' AND obs = 'Autoriza Caducidad'";
+                SqlCommand cmd = new SqlCommand(cadena, thisConnection);
+                mAutoriza = Convert.ToString(cmd.ExecuteScalar());
+
+                if (mAutoriza.Trim().Length > 0)
+                {
+                    if (thisConnection.State == ConnectionState.Open)
+                    {
+                        thisConnection.Close();
+                    }
+                    OK = "S";
+                    AutoPed = "S";
+                }
+                else
+                {
+                    Toast.MakeText(this, "PASSWORD INCORRECTO!!!", ToastLength.Short).Show();
+                    password.Text = "";
+                    password.RequestFocus();
+                    thisConnection.Close();
+                }
+
+                if (mAutoriza.Trim() == "USER X")
+                {
+                    if (thisConnection.State == ConnectionState.Closed)
+                    {
+                        thisConnection.Open();
+                    }
+
+                    cadena = "SELECT CASE When (SELECT DATENAME(dw, GETDATE())) = 'Domingo' THEN '1' WHEN ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) < (SELECT Convert(datetime,'07:00:00', 108) HoraServidor)) OR ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) > (SELECT Convert(datetime,'22:00:00', 108) HoraServidor)) THEN '1' WHEN ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) > (SELECT Convert(datetime,'10:24:00', 108) HoraServidor)) AND ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) < (SELECT Convert(datetime,'11:06:00', 108) HoraServidor)) THEN '1' WHEN ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) > (SELECT Convert(datetime,'17:54:00', 108) HoraServidor)) AND ((SELECT CONVERT(datetime, (SELECT Convert(varchar(8),GetDate(), 108) hora), 108)) < (SELECT Convert(datetime,'18:36:00', 108) HoraServidor)) THEN '1' ELSE '2' END";
+                    cmd = new SqlCommand(cadena, thisConnection);
+                    string dia = Convert.ToString(cmd.ExecuteScalar());
+
+                    if (thisConnection.State == ConnectionState.Open)
+                    {
+                        thisConnection.Close();
+                    }
+
+                    if (dia.Trim() == "1")
+                    {
+                        OK = "S";
+                    }
+                    else
+                    {
+                        OK = "NS";
+                    }
+                }
+
+                if (OK == "N")
+                {
+                    Toast.MakeText(this, "PASSWORD INCORRECTO!!!", ToastLength.Short).Show();
+                    password.Text = "";
+                    password.RequestFocus();
+                }
+                else if (OK == "NS")
+                {
+                    Toast.MakeText(this, "El USUARIO X No esta habilitado para autorizar a esta hora, la hora de autorizacion es de 10:00 PM a 07:00 AM De Lunes A Sabado y Domingos Todo el dia", ToastLength.Long).Show();
+                    password.Text = "";
+                    password.RequestFocus();
+                }
+                else
+                {
+                    string responsableAjuste = responsable.Trim().Length > 25 ? responsable.Trim().Substring(0, 25) : responsable.Trim();
+                    ConsultaInserFolioAdelantado = "insert into tb_det_folio_adelantado (responsable, fecha, emb_folio, recibo_cap, fecreccap, recibo_sug, fecrecsug, prod_clave, producto, cantidad, autorizo, tarimacap, tarimasug, imei, motivo, fechareal) values ('" + responsableAjuste.Trim() + "','" + DateTime.Now.ToString("dd/MM/yyyy hh:mm:ss tt") + "','" + pedido.Text + "', '" + folioLeido.Trim() + "', '" + fechaLeido + "','" + folioAtrasado + "', '" + fechaAtrasada + "', '" + productocve + "', '" + producto + "', '" + cajasDisp + "', '" + mAutoriza.Trim() + "', '" + tarimaLeido + "', '" + tarimaAtrasada.Trim() + "', '" + imei.Trim() + "', '" + motivoautorizafechaadelantada.Trim() + "', GETDATE())";
+                    builder.Dismiss();
+                }
+            };
+
+            builder.Show();
+        }
         #endregion
+        #endregion
+
+        #region ATU FUSIONADO (Robusto + Diseño XML)
+
+        private void MostrarDialogoATUOG2(
+            string motivo,
+            string folioLeido, string fechaLeido,
+            string folioAtrasado, string fechaAtrasada,
+            string productocve, string producto,
+            string cajasDisp, string tarimaLeido,
+            string tarimaAtrasada)
+        {
+            // 1. Verificar disponibilidad del servidor (Lógica Bloque 2)
+            Task.Run(async () =>
+            {
+                // Se asume que _atuService ya está instanciado a nivel de clase
+                bool servidorOk = await _atuService.ServidorDisponibleAsync();
+
+                RunOnUiThread(() =>
+                {
+                    if (!servidorOk)
+                    {
+                        // Si el servidor ATU no responde, usamos el método de contraseña (Fallback)
+                        MostrarDialogoPasswordLegacy(motivo, folioLeido, fechaLeido,
+                            folioAtrasado, fechaAtrasada, productocve, producto,
+                            cajasDisp, tarimaLeido, tarimaAtrasada);
+                        return;
+                    }
+
+                    // Si el servidor está OK, procedemos con el flujo OTP y el Layout XML
+                    EjecutarFlujoOTP(motivo, folioLeido, fechaLeido, folioAtrasado, fechaAtrasada,
+                                     productocve, producto, cajasDisp, tarimaLeido, tarimaAtrasada);
+                });
+            });
+        }
+
+        private void EjecutarFlujoOTPOG(
+            string motivo,
+            string folioLeido, string fechaLeido,
+            string folioAtrasado, string fechaAtrasada,
+            string productocve, string producto,
+            string cajasDisp, string tarimaLeido,
+            string tarimaAtrasada)
+        {
+            // --- Preparación de datos (Bloque 1) ---
+            var responsableCorto = responsable.Trim().Length > 25
+                ? responsable.Trim()[..25]
+                : responsable.Trim();
+
+            // Notificar al backend de inmediato (Cámaras recibe la alerta)
+            Task.Run(async () =>
+            {
+                await _atuService.CrearSolicitudAsync(
+                    embFolio: pedido.Text.Trim(),
+                    reciboCap: folioLeido.Trim(),
+                    reciboSug: folioAtrasado.Trim(),
+                    fechaRecCap: fechaLeido,
+                    fechaRecSug: fechaAtrasada,
+                    prodClave: productocve.Trim(),
+                    producto: producto.Trim(),
+                    cantidad: cajasDisp.Trim(),
+                    tarimaCap: tarimaLeido.Trim(),
+                    tarimaSug: tarimaAtrasada.Trim(),
+                    responsable: responsableCorto,
+                    motivo: motivo,
+                    imei: imei.Trim());
+            });
+
+            // --- Inflar Interfaz XML (Bloque 1) ---
+            var inflater = LayoutInflater.From(this)!;
+            var view = inflater.Inflate(Resource.Layout.dialog_atu_otp, null)!;
+
+            var lblInfo = view.FindViewById<TextView>(Resource.Id.lblAtuInfo)!;
+            var txtSupervisor = view.FindViewById<EditText>(Resource.Id.NombreSupervisor)!;
+            var txtOTP = view.FindViewById<EditText>(Resource.Id.txtAtuOtp)!;
+            var lblEstado = view.FindViewById<TextView>(Resource.Id.lblAtuEstado)!;
+
+            lblInfo.Text = $"Folio: {pedido.Text.Trim()}\n" +
+                           $"Producto: {productocve} — {producto}\n" +
+                           $"Recibo Sug: {folioAtrasado} | Tarima: {tarimaAtrasada}\n\n" +
+                           $"Solicitud enviada a Cámaras Frías. Ingresa el OTP.";
+
+            txtOTP.InputType = Android.Text.InputTypes.ClassNumber;
+
+            var builder = new Android.App.AlertDialog.Builder(this);
+            builder.SetTitle("🔐 Autorización ATU");
+            builder.SetView(view);
+            builder.SetCancelable(false);
+
+            Android.App.AlertDialog? dialog = null;
+
+            builder.SetPositiveButton("✓ VALIDAR OTP", (Android.Content.IDialogInterfaceOnClickListener?)null);
+            builder.SetNegativeButton("✕ CANCELAR", (s, e) => { Borrar(); });
+
+            dialog = builder.Create()!;
+            dialog.Show();
+
+            // --- Lógica de validación con Override (Bloque 1 + Bloque 2) ---
+            var btnValidar = dialog.GetButton((int)Android.Content.DialogButtonType.Positive)!;
+
+            btnValidar.Click += async (s, e) =>
+            {
+                var supId = txtSupervisor.Text.Trim();
+                var otp = txtOTP.Text.Trim();
+
+                if (string.IsNullOrEmpty(supId) || otp.Length != 6)
+                {
+                    lblEstado.Text = "⚠️ Revisa el No. Empleado y que el OTP sea de 6 dígitos";
+                    lblEstado.SetTextColor(Android.Graphics.Color.Yellow);
+                    return;
+                }
+
+                // Bloqueo visual (Bloque 2)
+                btnValidar.Enabled = false;
+                lblEstado.Text = "⏳ Validando con el servidor...";
+                lblEstado.SetTextColor(Android.Graphics.Color.White);
+
+                var (isValid, supNombre, mensaje) = await _atuService.ValidarOTPAsync(
+                    otp: otp,
+                    embFolio: pedido.Text.Trim(),
+                    prodClave: productocve.Trim(),
+                    reciboSug: folioAtrasado.Trim(),
+                    tarimaSug: tarimaAtrasada.Trim(),
+                    supervisorId: supId);
+
+                if (isValid)
+                {
+                    // ✅ ÉXITO
+                    mAutoriza = !string.IsNullOrEmpty(supNombre) ? supNombre.Trim() : supId;
+
+                    ConsultaInserFolioAdelantado =
+                        "insert into tb_det_folio_adelantado " +
+                        "(responsable, fecha, emb_folio, recibo_cap, fecreccap, " +
+                        "recibo_sug, fecrecsug, prod_clave, producto, cantidad, " +
+                        "autorizo, tarimacap, tarimasug, imei, motivo, fechareal) " +
+                        "values ('" + responsableCorto + "','" +
+                        DateTime.Now.ToString("dd/MM/yyyy hh:mm:ss tt") + "','" +
+                        pedido.Text.Trim() + "', '" + folioLeido.Trim() + "', '" + fechaLeido + "','" +
+                        folioAtrasado + "', '" + fechaAtrasada + "', '" + productocve + "', '" +
+                        producto + "', '" + cajasDisp + "', '" + mAutoriza + "', '" +
+                        tarimaLeido + "', '" + tarimaAtrasada.Trim() + "', '" + imei.Trim() +
+                        "', '" + motivo + "', GETDATE())";
+
+                    lblEstado.Text = "✅ Autorización válida";
+                    lblEstado.SetTextColor(Android.Graphics.Color.LimeGreen);
+
+                    await Task.Delay(1000); // Dar tiempo al usuario de ver el check verde
+                    dialog.Dismiss();
+                }
+                else
+                {
+                    // ❌ ERROR / FRAUDE
+                    btnValidar.Enabled = true; // Reactivar para reintentar
+                    lblEstado.Text = mensaje.Contains("FRAUDE") ? $"🔴 FRAUDE: {mensaje}" : $"❌ {mensaje}";
+                    lblEstado.SetTextColor(Android.Graphics.Color.Red);
+
+                    if (mensaje.Contains("FRAUDE"))
+                    {
+                        new Android.App.AlertDialog.Builder(this)
+                            .SetTitle("🚨 INTENTO DE FRAUDE")
+                            .SetMessage($"Este intento ha sido registrado.\n\n{mensaje}")
+                            .SetNeutralButton("ENTENDIDO", (s2, e2) => { })
+                            .Show();
+                    }
+
+                    txtOTP.Text = "";
+                    txtOTP.RequestFocus();
+                }
+            };
+        }
+
+        #endregion
+
+
+        private void MostrarDialogoATU(
+    string motivo,
+    string folioLeido, string fechaLeido,
+    string folioAtrasado, string fechaAtrasada,
+    string productocve, string producto,
+    string cajasDisp, string tarimaLeido,
+    string tarimaAtrasada)
+        {
+            // 1. Verificación previa de disponibilidad (Fallback del Bloque 2)
+            Task.Run(async () =>
+            {
+                bool servidorOk = await _atuService.ServidorDisponibleAsync();
+
+                RunOnUiThread(() =>
+                {
+                    if (!servidorOk)
+                    {
+                        // Si el servidor no responde, usamos el método de contraseña anterior
+                        MostrarDialogoPasswordLegacy(motivo, folioLeido, fechaLeido,
+                            folioAtrasado, fechaAtrasada, productocve, producto,
+                            cajasDisp, tarimaLeido, tarimaAtrasada);
+                        return;
+                    }
+
+                    // Si el servidor está OK, procedemos con el flujo OTP
+                    EjecutarFlujoOTP(motivo, folioLeido, fechaLeido, folioAtrasado, fechaAtrasada,
+                                     productocve, producto, cajasDisp, tarimaLeido, tarimaAtrasada);
+                });
+            });
+        }
+
+        private void EjecutarFlujoOTP(
+            string motivo,
+            string folioLeido, string fechaLeido,
+            string folioAtrasado, string fechaAtrasada,
+            string productocve, string producto,
+            string cajasDisp, string tarimaLeido,
+            string tarimaAtrasada)
+        {
+            // Preparación de datos (Lógica Bloque 1)
+            var responsableCorto = responsable.Trim().Length > 25
+                ? responsable.Trim()[..25]
+                : responsable.Trim();
+
+            // Notificar al backend en segundo plano de inmediato
+            Task.Run(async () => await _atuService.CrearSolicitudAsync(
+                embFolio: pedido.Text.Trim(),
+                reciboCap: folioLeido.Trim(),
+                reciboSug: folioAtrasado.Trim(),
+                fechaRecCap: fechaLeido,
+                fechaRecSug: fechaAtrasada,
+                prodClave: productocve.Trim(),
+                producto: producto.Trim(),
+                cantidad: cajasDisp.Trim(),
+                tarimaCap: tarimaLeido.Trim(),
+                tarimaSug: tarimaAtrasada.Trim(),
+                responsable: responsableCorto,
+                motivo: motivo,
+                imei: imei.Trim()));
+
+            // Inflar Interfaz XML
+            var inflater = LayoutInflater.From(this)!;
+            var view = inflater.Inflate(Resource.Layout.dialog_atu_otp, null)!;
+
+            var lblInfo = view.FindViewById<TextView>(Resource.Id.lblAtuInfo)!;
+            var txtSupervisor = view.FindViewById<EditText>(Resource.Id.NombreSupervisor)!;
+            var txtOTP = view.FindViewById<EditText>(Resource.Id.txtAtuOtp)!;
+            var lblEstado = view.FindViewById<TextView>(Resource.Id.lblAtuEstado)!;
+
+            // Texto de ayuda detallado (Combinado Bloque 1 + 2)
+            lblInfo.Text =
+                $"Folio: {pedido.Text.Trim()}\n" +
+                $"Producto: {productocve} — {producto}\n" +
+                $"Recibo: {folioAtrasado}  |  Tarima: {tarimaAtrasada}\n\n" +
+                $"Espera el código OTP del supervisor de cámaras frías.\n" +
+                $"El supervisor recibirá la solicitud en su celular.";
+
+            txtOTP.InputType = Android.Text.InputTypes.ClassNumber;
+
+            var builder = new Android.App.AlertDialog.Builder(this);
+            builder.SetTitle("🔐 Autorización ATU");
+            builder.SetView(view);
+            builder.SetCancelable(false);
+
+            Android.App.AlertDialog? dialog = null;
+
+            builder.SetPositiveButton("✓ VALIDAR OTP", (Android.Content.IDialogInterfaceOnClickListener?)null);
+            builder.SetNegativeButton("✕ CANCELAR", (s, e) =>
+            {
+                Borrar();
+                dialog?.Dismiss(); // Cierre explícito del Bloque 1
+            });
+
+            dialog = builder.Create()!;
+            dialog.Show();
+
+            // Lógica de Validación con Override
+            var btnValidar = dialog.GetButton((int)Android.Content.DialogButtonType.Positive)!;
+
+            btnValidar.Click += async (s, e) =>
+            {
+                var supId = txtSupervisor.Text.Trim();
+                var otp = txtOTP.Text.Trim();
+
+                // Validaciones granulares (Bloque 1)
+                if (string.IsNullOrEmpty(supId))
+                {
+                    lblEstado.Text = "⚠️ Ingresa el No. de Empleado del supervisor";
+                    lblEstado.SetTextColor(Android.Graphics.Color.Orange);
+                    return;
+                }
+
+                if (otp.Length != 6)
+                {
+                    lblEstado.Text = "⚠️ El código OTP debe tener 6 dígitos";
+                    lblEstado.SetTextColor(Android.Graphics.Color.Orange);
+                    return;
+                }
+
+                // Control de UI (Bloque 2)
+                btnValidar.Enabled = false;
+                lblEstado.Text = "⏳ Validando con el servidor...";
+                lblEstado.SetTextColor(Android.Graphics.Color.Gray);
+
+                var (isValid, supNombre, mensaje) = await _atuService.ValidarOTPAsync(
+                    otp: otp,
+                    embFolio: pedido.Text.Trim(),
+                    prodClave: productocve.Trim(),
+                    reciboSug: folioAtrasado.Trim(),
+                    tarimaSug: tarimaAtrasada.Trim(),
+                    supervisorId: supId);
+
+                if (isValid)
+                {
+                    mAutoriza = !string.IsNullOrEmpty(supNombre) ? supNombre.Trim() : supId;
+
+                    ConsultaInserFolioAdelantado =
+                        "insert into tb_det_folio_adelantado (...) " + // (Aquí va tu SQL completo)
+                        "values ('" + responsableCorto + "', ...)";
+
+                    lblEstado.Text = "✓ Autorización válida";
+                    lblEstado.SetTextColor(Android.Graphics.Color.ParseColor("#00AA44"));
+
+                    await Task.Delay(1000);
+                    dialog.Dismiss();
+                }
+                else
+                {
+                    btnValidar.Enabled = true;
+
+                    // Manejo de Fraude con seguridad de hilos (Bloque 1)
+                    if (mensaje.Contains("FRAUDE"))
+                    {
+                        RunOnUiThread(() => new Android.App.AlertDialog.Builder(this)
+                            .SetTitle("🚨 FRAUDE DETECTADO")
+                            .SetMessage($"El intento queda registrado en auditoría.\n\n{mensaje}")
+                            .SetNeutralButton("ENTENDIDO", (s2, e2) => { })
+                            .SetCancelable(false)
+                            .Show());
+                    }
+
+                    lblEstado.Text = mensaje;
+                    lblEstado.SetTextColor(Android.Graphics.Color.Red);
+                    txtOTP.Text = "";
+                    txtOTP.RequestFocus();
+                }
+            };
+        }
     }
 }
