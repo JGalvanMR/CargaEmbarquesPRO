@@ -1675,8 +1675,7 @@ namespace CargaEmbarques
                                                     Productocve = V_Prd;
                                                     alertcaducidad.Dispose();
 
-                                                    MostrarDialogoATU(
-                                                        motivo: motivoautorizafechaadelantada.Trim(),
+                                                    IniciarFlujoCargaATU(
                                                         folioLeido: FolioLeido,
                                                         fechaLeido: FechaLeido,
                                                         folioAtrasado: FolioAtrasado,
@@ -1686,6 +1685,18 @@ namespace CargaEmbarques
                                                         cajasDisp: CajasDisp,
                                                         tarimaLeido: TarimaLeido,
                                                         tarimaAtrasada: TarimaAtrasada);
+
+                                                    //MostrarDialogoATU(
+                                                    //    motivo: motivoautorizafechaadelantada.Trim(),
+                                                    //    folioLeido: FolioLeido,
+                                                    //    fechaLeido: FechaLeido,
+                                                    //    folioAtrasado: FolioAtrasado,
+                                                    //    fechaAtrasada: FechaAtrasada,
+                                                    //    productocve: Productocve,
+                                                    //    producto: Producto,
+                                                    //    cajasDisp: CajasDisp,
+                                                    //    tarimaLeido: TarimaLeido,
+                                                    //    tarimaAtrasada: TarimaAtrasada);
                                                 });
 
                                                 alertcaducidad.SetNegativeButton("Cancelar", (senderAlert, args) =>
@@ -1749,17 +1760,28 @@ namespace CargaEmbarques
                                                 Productocve = V_Prd;
                                                 alertcaducidad.Dispose();
 
-                                                MostrarDialogoATU(
-                                                    motivo: motivoautorizafechaadelantada.Trim(),
-                                                    folioLeido: FolioLeido,
-                                                    fechaLeido: FechaLeido,
-                                                    folioAtrasado: FolioAtrasado,
-                                                    fechaAtrasada: FechaAtrasada,
-                                                    productocve: Productocve,
-                                                    producto: Producto,
-                                                    cajasDisp: CajasDisp,
-                                                    tarimaLeido: TarimaLeido,
-                                                    tarimaAtrasada: TarimaAtrasada);
+                                                IniciarFlujoCargaATU(
+                                                        folioLeido: FolioLeido,
+                                                        fechaLeido: FechaLeido,
+                                                        folioAtrasado: FolioAtrasado,
+                                                        fechaAtrasada: FechaAtrasada,
+                                                        productocve: Productocve,
+                                                        producto: Producto,
+                                                        cajasDisp: CajasDisp,
+                                                        tarimaLeido: TarimaLeido,
+                                                        tarimaAtrasada: TarimaAtrasada);
+
+                                                //MostrarDialogoATU(
+                                                //    motivo: motivoautorizafechaadelantada.Trim(),
+                                                //    folioLeido: FolioLeido,
+                                                //    fechaLeido: FechaLeido,
+                                                //    folioAtrasado: FolioAtrasado,
+                                                //    fechaAtrasada: FechaAtrasada,
+                                                //    productocve: Productocve,
+                                                //    producto: Producto,
+                                                //    cajasDisp: CajasDisp,
+                                                //    tarimaLeido: TarimaLeido,
+                                                //    tarimaAtrasada: TarimaAtrasada);
                                             });
 
                                             alertcaducidad.SetNegativeButton("Cancelar", (senderAlert, args) =>
@@ -8728,6 +8750,8 @@ namespace CargaEmbarques
         #endregion
 
 
+
+
         #region ATU
         // Agrega este método en tu Activity, junto a los otros métodos existentes
         private void MostrarDialogoATUOG(
@@ -8853,7 +8877,7 @@ namespace CargaEmbarques
             });
 
             var dialog = new Android.App.AlertDialog.Builder(this)
-                .SetTitle("🔐 Autorización ATU — Folio Adelantado")
+                //.SetTitle("🔐 Autorización ATU — Folio Adelantado")
                 .SetView(view)
                 .SetCancelable(false)
                 .Create();
@@ -9245,7 +9269,54 @@ namespace CargaEmbarques
 
         #endregion
 
+        // ── PASO 1: Mostrar dialog de MOTIVO antes de enviar la solicitud ─────────────
+        // Llama esto DONDE ANTES mostraba el dialog de contraseña (botón "Autorizar"):
 
+        private void IniciarFlujoCargaATU(
+            string folioLeido, string fechaLeido,
+            string folioAtrasado, string fechaAtrasada,
+            string productocve, string producto,
+            string cajasDisp, string tarimaLeido,
+            string tarimaAtrasada)
+        {
+            // Spinner/picker de motivos (igual que el original)
+            var motivos = new[]
+            {
+        "Folio Adelantado Requerido Por Cliente",
+        "Folio Adelantado Caja Inexistente",
+        "Folio Adelantado Caja No Encontrada",
+        "Folio Adelantado No Apto Para Carga"
+    };
+
+            string motivoSeleccionado = motivos[0];
+
+            var inflater = LayoutInflater.From(this)!;
+            var viewMotivo = inflater.Inflate(Resource.Layout.dialog_atu_motivo, null)!;
+
+            var spinnerMotivo = viewMotivo.FindViewById<Spinner>(Resource.Id.spinnerMotivo)!;
+            var adapter = new ArrayAdapter<string>(this,
+                Android.Resource.Layout.SimpleSpinnerItem, motivos);
+            adapter.SetDropDownViewResource(Android.Resource.Layout.SimpleSpinnerDropDownItem);
+            spinnerMotivo.Adapter = adapter;
+            spinnerMotivo.ItemSelected += (s, e) => motivoSeleccionado = motivos[e.Position];
+
+            new Android.App.AlertDialog.Builder(this)
+                .SetTitle("Motivo del folio adelantado")
+                .SetView(viewMotivo)
+                .SetCancelable(false)
+                .SetPositiveButton("Continuar", (s, e) =>
+                {
+                    // PASO 2: Mostrar el dialog de OTP con el motivo ya seleccionado
+                    MostrarDialogoATU(
+                        motivoSeleccionado,
+                        folioLeido, fechaLeido,
+                        folioAtrasado, fechaAtrasada,
+                        productocve, producto,
+                        cajasDisp, tarimaLeido, tarimaAtrasada);
+                })
+                .SetNegativeButton("Cancelar", (s, e) => Borrar())
+                .Show();
+        }
         private void MostrarDialogoATU(
     string motivo,
     string folioLeido, string fechaLeido,
@@ -9326,7 +9397,7 @@ namespace CargaEmbarques
             txtOTP.InputType = Android.Text.InputTypes.ClassNumber;
 
             var builder = new Android.App.AlertDialog.Builder(this);
-            builder.SetTitle("🔐 Autorización ATU");
+            //builder.SetTitle("🔐 Autorización ATU");
             builder.SetView(view);
             builder.SetCancelable(false);
 
