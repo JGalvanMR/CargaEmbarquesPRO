@@ -73,19 +73,68 @@ namespace CargaEmbarques.Services
 
         /// <summary>
         /// Valida el OTP que dictó el supervisor de cámaras frías.
-        /// Devuelve (isValid, supervisorId, mensaje).
         /// </summary>
         public async Task<(bool IsValid, string SupervisorId, string Mensaje)> ValidarOTPAsync(
+    string otp,
+    string embFolio,
+    string prodClave,
+    string reciboCap,
+    string tarimaCap,
+    string responsable) // Ya no lo usamos para el JSON, pero lo dejamos por si lo necesitas para el INSERT
+        {
+            try
+            {
+                // ✅ 1. ARMAMOS EL JSON EXACTO COMO ESPERA 'ValidateOtpFolioRequest' EN EL BACKEND
+                var body = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    code = otp,
+                    embFolio = embFolio.Trim(),
+                    actualProdClave = prodClave.Trim(),
+                    actualRecibo = reciboCap.Trim(),
+                    actualTarima = int.TryParse(tarimaCap.Trim(), out int t) ? t : 0
+                });
+
+                // ✅ 2. USAMOS EL ENDPOINT CORRECTO PARA FOLIOS ADELANTADOS
+                var resp = await _http.PostAsync(
+                    $"{ATU_URL}/api/otp/validate-folio",
+                    new StringContent(body, Encoding.UTF8, "application/json"));
+
+                if (!resp.IsSuccessStatusCode)
+                    return (false, "", "Error de conexión con servidor ATU");
+
+                var json = await resp.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                bool isAuth = root.TryGetProperty("isAuthorized", out var a) && a.GetBoolean();
+                string msg = root.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
+
+                // ✅ 3. EL BACKEND NOS DEVUELVE QUIÉN REALMENTE LO AUTORIZÓ
+                string supId = root.TryGetProperty("supervisorId", out var s) ? s.GetString() ?? "" : "";
+
+                return (isAuth, supId, msg);
+            }
+            catch (Exception ex)
+            {
+                return (false, "", $"Error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Valida el OTP que dictó el supervisor de cámaras frías.
+        /// Devuelve (isValid, supervisorId, mensaje).
+        /// </summary>
+        public async Task<(bool IsValid, string SupervisorId, string Mensaje)> ValidarOTPAsyncLEGACY(
             string otp,
             string embFolio,
             string prodClave,
-            string reciboSug,
-            string tarimaSug,
+            string reciboCap,
+            string tarimaCap,
             string supervisorId)
         {
             try
             {
-                var batchId = $"{prodClave.Trim()}-{reciboSug.Trim()}-{tarimaSug.Trim()}";
+                var batchId = $"{prodClave.Trim()}-{reciboCap.Trim()}-{tarimaCap.Trim()}";
 
                 var body = System.Text.Json.JsonSerializer.Serialize(new
                 {
@@ -93,8 +142,8 @@ namespace CargaEmbarques.Services
                     code = otp,
                     supervisorId,
                     actualProdClave = prodClave.Trim(),
-                    actualRecibo = reciboSug.Trim(),
-                    actualTarima = int.TryParse(tarimaSug.Trim(), out int t) ? t : 0
+                    actualRecibo = reciboCap.Trim(),
+                    actualTarima = int.TryParse(tarimaCap.Trim(), out int t) ? t : 0
                 });
 
                 var resp = await _http.PostAsync(

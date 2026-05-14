@@ -12,6 +12,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>CargaEmbarques</RootNamespace>
     <AssemblyName>CargaEmbarques</AssemblyName>
+	  <LangVersion>latest</LangVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>True</Deterministic>
     <AndroidApplication>True</AndroidApplication>

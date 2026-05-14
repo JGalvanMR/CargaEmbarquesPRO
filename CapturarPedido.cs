@@ -8556,12 +8556,13 @@ namespace CargaEmbarques
                 // y se toma HoraRegVig que es char(5) en formato HH:mm
                 string sqlHoraVig =
                     @"SELECT TOP 1 t.HoraRegVig
-          FROM tb_mstr_trailer t
-          INNER JOIN tb_mstr_embarque e ON e.emb_folio = t.pdn_folio
-          WHERE e.emb_folio = @folio
-            AND t.HoraRegVig IS NOT NULL
-            AND LTRIM(RTRIM(t.HoraRegVig)) != ''
-          ORDER BY t.fecha DESC";
+FROM tb_mstr_trailer t
+INNER JOIN tb_mstr_embarque e 
+    ON CAST(e.emb_folio AS INT) = CAST(t.pdn_folio AS INT) -- Convertimos ambos a enteros
+WHERE CAST(e.emb_folio AS INT) = @folio
+  AND t.HoraRegVig IS NOT NULL
+  AND LTRIM(RTRIM(t.HoraRegVig)) != ''
+ORDER BY t.fecha DESC";
 
                 using (SqlCommand cmd = new SqlCommand(sqlHoraVig, thisConnection))
                 {
@@ -8750,229 +8751,10 @@ namespace CargaEmbarques
         #endregion
 
 
-
-
         #region ATU
-        // Agrega este método en tu Activity, junto a los otros métodos existentes
-        private void MostrarDialogoATUOG(
-            string motivo,
-            // Todos estos ya los tienes como variables en el scope del KeyPress:
-            string folioLeido, string fechaLeido,
-            string folioAtrasado, string fechaAtrasada,
-            string productocve, string producto,
-            string cajasDisp, string tarimaLeido,
-            string tarimaAtrasada)
-        {
-            var atuService = new CargaEmbarques.Services.ATUService();
 
-            // ── 1. Primero verificar que el servidor ATU responde ────────────────
-            Task.Run(async () =>
-            {
-                bool servidorOk = await atuService.ServidorDisponibleAsync();
 
-                RunOnUiThread(() =>
-                {
-                    if (!servidorOk)
-                    {
-                        // Sin servidor ATU → ofrecemos el método legacy como respaldo
-                        new Android.App.AlertDialog.Builder(this)
-                            .SetTitle("⚠️ Servidor ATU no disponible")
-                            .SetMessage("No se pudo conectar al servidor ATU.\n\nEl supervisor deberá autorizar con su contraseña (método anterior).")
-                            .SetPositiveButton("Usar contraseña", (s, e) =>
-                            {
-                                // Aquí llamas al dialog de password original
-                                // (lo dejas intacto como fallback)
-                                MostrarDialogoPasswordLegacy(motivo, folioLeido, fechaLeido,
-                                    folioAtrasado, fechaAtrasada, productocve, producto,
-                                    cajasDisp, tarimaLeido, tarimaAtrasada);
-                            })
-                            .SetNegativeButton("Cancelar", (s, e) => Borrar())
-                            .SetCancelable(false)
-                            .Show();
-                        return;
-                    }
 
-                    // ── 2. Servidor disponible → crear solicitud ATU ─────────────
-                    MostrarDialogoEsperandoOTP(atuService, motivo, folioLeido, fechaLeido,
-                        folioAtrasado, fechaAtrasada, productocve, producto,
-                        cajasDisp, tarimaLeido, tarimaAtrasada);
-                });
-            });
-        }
-
-        private void MostrarDialogoEsperandoOTP(
-            ATUService atuService,
-            string motivo,
-            string folioLeido, string fechaLeido,
-            string folioAtrasado, string fechaAtrasada,
-            string productocve, string producto,
-            string cajasDisp, string tarimaLeido,
-            string tarimaAtrasada)
-        {
-            // Inflar un layout con los campos que necesitamos
-            // (si no quieres crear un layout XML, usamos controles en código)
-            var view = new LinearLayout(this) { Orientation = Orientation.Vertical };
-            view.SetPadding(40, 20, 40, 10);
-
-            var lblInfo = new TextView(this)
-            {
-                Text = $"📦 Folio adelantado detectado\n" +
-                       $"Producto: {productocve} - {producto}\n" +
-                       $"Recibo sugerido: {folioAtrasado} | Tarima: {tarimaAtrasada}\n\n" +
-                       $"Se notificó a Cámaras Frías.\n" +
-                       $"Espere el código OTP del supervisor."
-            };
-            lblInfo.SetTextSize(Android.Util.ComplexUnitType.Sp, 14);
-            lblInfo.SetTextColor(Android.Graphics.Color.Black);
-
-            var lblSup = new TextView(this) { Text = "No. Empleado del supervisor:" };
-            lblSup.SetTextSize(Android.Util.ComplexUnitType.Sp, 13);
-
-            var txtSupervisor = new EditText(this)
-            {
-                Hint = "Ej: 12345",
-                InputType = Android.Text.InputTypes.ClassNumber
-            };
-
-            var lblOTP = new TextView(this) { Text = "Código OTP (6 dígitos):" };
-            lblOTP.SetTextSize(Android.Util.ComplexUnitType.Sp, 13);
-
-            var txtOTP = new EditText(this)
-            {
-                Hint = "______",
-                InputType = Android.Text.InputTypes.ClassNumber,
-                LetterSpacing = 0.3f
-            };
-            txtOTP.SetTextSize(Android.Util.ComplexUnitType.Sp, 28);
-
-            view.AddView(lblInfo);
-            view.AddView(lblSup);
-            view.AddView(txtSupervisor);
-            view.AddView(lblOTP);
-            view.AddView(txtOTP);
-
-            // ── Crear solicitud ATU en paralelo mientras el dialog está abierto ──
-            // (el supervisor de cámaras frías recibirá la notificación en su celular)
-            var responsableAjuste = responsable.Trim().Length > 25
-                ? responsable.Trim().Substring(0, 25)
-                : responsable.Trim();
-
-            Task.Run(async () =>
-            {
-                await atuService.CrearSolicitudAsync(
-                    embFolio: pedido.Text.Trim(),
-                    reciboCap: folioLeido.Trim(),
-                    reciboSug: folioAtrasado.Trim(),
-                    fechaRecCap: fechaLeido,
-                    fechaRecSug: fechaAtrasada,
-                    prodClave: productocve.Trim(),
-                    producto: producto.Trim(),
-                    cantidad: cajasDisp.Trim(),
-                    tarimaCap: tarimaLeido.Trim(),
-                    tarimaSug: tarimaAtrasada.Trim(),
-                    responsable: responsableAjuste,
-                    motivo: motivo.Trim(),
-                    imei: imei.Trim());
-                // La notificación a ATU.CamaraFria la emite el backend via SignalR
-            });
-
-            var dialog = new Android.App.AlertDialog.Builder(this)
-                //.SetTitle("🔐 Autorización ATU — Folio Adelantado")
-                .SetView(view)
-                .SetCancelable(false)
-                .Create();
-
-            dialog.SetButton("✓ VALIDAR OTP", (s, e) => { }); // override abajo
-            dialog.SetButton2("✕ CANCELAR", (s, e) =>
-            {
-                Borrar();
-                dialog.Dismiss();
-            });
-
-            dialog.Show();
-
-            // Override del botón para no cerrar automáticamente
-            dialog.GetButton((int)Android.Content.DialogButtonType.Positive)
-                  .Click += (s, e) =>
-                  {
-                      string otpIngresado = txtOTP.Text.Trim();
-                      string supervisorIngresado = txtSupervisor.Text.Trim();
-
-                      if (supervisorIngresado.Length == 0)
-                      {
-                          Toast.MakeText(this, "Ingresa el número de empleado del supervisor", ToastLength.Short).Show();
-                          return;
-                      }
-
-                      if (otpIngresado.Length != 6)
-                      {
-                          Toast.MakeText(this, "El código OTP debe tener 6 dígitos", ToastLength.Short).Show();
-                          return;
-                      }
-
-                      // Deshabilitar mientras valida
-                      dialog.GetButton((int)Android.Content.DialogButtonType.Positive).Enabled = false;
-                      Toast.MakeText(this, "⏳ Validando código...", ToastLength.Short).Show();
-
-                      Task.Run(async () =>
-                      {
-                          var (isValid, supId, mensaje) = await atuService.ValidarOTPAsync(
-                      otp: otpIngresado,
-                      embFolio: pedido.Text.Trim(),
-                      prodClave: productocve.Trim(),
-                      reciboSug: folioAtrasado.Trim(),
-                      tarimaSug: tarimaAtrasada.Trim(),
-                      supervisorId: supervisorIngresado);
-
-                          RunOnUiThread(() =>
-                          {
-                              if (isValid)
-                              {
-                                  // ✅ OTP válido — construir el INSERT igual que antes
-                                  // supId viene del backend (el supervisor que generó el OTP)
-                                  mAutoriza = supId.Length > 0 ? supId : supervisorIngresado;
-
-                                  ConsultaInserFolioAdelantado =
-                              "insert into tb_det_folio_adelantado " +
-                              "(responsable, fecha, emb_folio, recibo_cap, fecreccap, " +
-                              "recibo_sug, fecrecsug, prod_clave, producto, cantidad, " +
-                              "autorizo, tarimacap, tarimasug, imei, motivo, fechareal) " +
-                              "values ('" + responsableAjuste.Trim() + "','" +
-                              DateTime.Now.ToString("dd/MM/yyyy hh:mm:ss tt") + "','" +
-                              pedido.Text + "', '" + folioLeido.Trim() + "', '" + fechaLeido + "','" +
-                              folioAtrasado + "', '" + fechaAtrasada + "', '" + productocve + "', '" +
-                              producto + "', '" + cajasDisp + "', '" + mAutoriza.Trim() + "', '" +
-                              tarimaLeido + "', '" + tarimaAtrasada.Trim() + "', '" + imei.Trim() +
-                              "', '" + motivo.Trim() + "', GETDATE())";
-
-                                  Toast.MakeText(this, "✅ Autorización ATU válida", ToastLength.Short).Show();
-                                  dialog.Dismiss();
-                              }
-                              else
-                              {
-                                  // ❌ OTP inválido
-                                  var colorMensaje = mensaje.Contains("FRAUDE")
-                              ? "🔴 FRAUDE DETECTADO\n\n" + mensaje
-                              : "❌ " + mensaje;
-
-                                  new Android.App.AlertDialog.Builder(this)
-                              .SetTitle("Código no válido")
-                              .SetMessage(colorMensaje)
-                              .SetNeutralButton("Reintentar", (s2, e2) =>
-                                {
-                                    txtOTP.Text = "";
-                                    txtOTP.RequestFocus();
-                                    dialog.GetButton(
-                                        (int)Android.Content.DialogButtonType.Positive
-                                    ).Enabled = true;
-                                })
-                              .SetCancelable(false)
-                              .Show();
-                              }
-                          });
-                      });
-                  };
-        }
 
         #region ATU Legacy Password Dialog
         private void MostrarDialogoPasswordLegacy(
@@ -9100,179 +8882,183 @@ namespace CargaEmbarques
 
         #region ATU FUSIONADO (Robusto + Diseño XML)
 
-        private void MostrarDialogoATUOG2(
-            string motivo,
-            string folioLeido, string fechaLeido,
-            string folioAtrasado, string fechaAtrasada,
-            string productocve, string producto,
-            string cajasDisp, string tarimaLeido,
-            string tarimaAtrasada)
-        {
-            // 1. Verificar disponibilidad del servidor (Lógica Bloque 2)
-            Task.Run(async () =>
-            {
-                // Se asume que _atuService ya está instanciado a nivel de clase
-                bool servidorOk = await _atuService.ServidorDisponibleAsync();
-
-                RunOnUiThread(() =>
-                {
-                    if (!servidorOk)
-                    {
-                        // Si el servidor ATU no responde, usamos el método de contraseña (Fallback)
-                        MostrarDialogoPasswordLegacy(motivo, folioLeido, fechaLeido,
-                            folioAtrasado, fechaAtrasada, productocve, producto,
-                            cajasDisp, tarimaLeido, tarimaAtrasada);
-                        return;
-                    }
-
-                    // Si el servidor está OK, procedemos con el flujo OTP y el Layout XML
-                    EjecutarFlujoOTP(motivo, folioLeido, fechaLeido, folioAtrasado, fechaAtrasada,
-                                     productocve, producto, cajasDisp, tarimaLeido, tarimaAtrasada);
-                });
-            });
-        }
-
-        private void EjecutarFlujoOTPOG(
-            string motivo,
-            string folioLeido, string fechaLeido,
-            string folioAtrasado, string fechaAtrasada,
-            string productocve, string producto,
-            string cajasDisp, string tarimaLeido,
-            string tarimaAtrasada)
-        {
-            // --- Preparación de datos (Bloque 1) ---
-            var responsableCorto = responsable.Trim().Length > 25
-                ? responsable.Trim()[..25]
-                : responsable.Trim();
-
-            // Notificar al backend de inmediato (Cámaras recibe la alerta)
-            Task.Run(async () =>
-            {
-                await _atuService.CrearSolicitudAsync(
-                    embFolio: pedido.Text.Trim(),
-                    reciboCap: folioLeido.Trim(),
-                    reciboSug: folioAtrasado.Trim(),
-                    fechaRecCap: fechaLeido,
-                    fechaRecSug: fechaAtrasada,
-                    prodClave: productocve.Trim(),
-                    producto: producto.Trim(),
-                    cantidad: cajasDisp.Trim(),
-                    tarimaCap: tarimaLeido.Trim(),
-                    tarimaSug: tarimaAtrasada.Trim(),
-                    responsable: responsableCorto,
-                    motivo: motivo,
-                    imei: imei.Trim());
-            });
-
-            // --- Inflar Interfaz XML (Bloque 1) ---
-            var inflater = LayoutInflater.From(this)!;
-            var view = inflater.Inflate(Resource.Layout.dialog_atu_otp, null)!;
-
-            var lblInfo = view.FindViewById<TextView>(Resource.Id.lblAtuInfo)!;
-            var txtSupervisor = view.FindViewById<EditText>(Resource.Id.NombreSupervisor)!;
-            var txtOTP = view.FindViewById<EditText>(Resource.Id.txtAtuOtp)!;
-            var lblEstado = view.FindViewById<TextView>(Resource.Id.lblAtuEstado)!;
-
-            lblInfo.Text = $"Folio: {pedido.Text.Trim()}\n" +
-                           $"Producto: {productocve} — {producto}\n" +
-                           $"Recibo Sug: {folioAtrasado} | Tarima: {tarimaAtrasada}\n\n" +
-                           $"Solicitud enviada a Cámaras Frías. Ingresa el OTP.";
-
-            txtOTP.InputType = Android.Text.InputTypes.ClassNumber;
-
-            var builder = new Android.App.AlertDialog.Builder(this);
-            builder.SetTitle("🔐 Autorización ATU");
-            builder.SetView(view);
-            builder.SetCancelable(false);
-
-            Android.App.AlertDialog? dialog = null;
-
-            builder.SetPositiveButton("✓ VALIDAR OTP", (Android.Content.IDialogInterfaceOnClickListener?)null);
-            builder.SetNegativeButton("✕ CANCELAR", (s, e) => { Borrar(); });
-
-            dialog = builder.Create()!;
-            dialog.Show();
-
-            // --- Lógica de validación con Override (Bloque 1 + Bloque 2) ---
-            var btnValidar = dialog.GetButton((int)Android.Content.DialogButtonType.Positive)!;
-
-            btnValidar.Click += async (s, e) =>
-            {
-                var supId = txtSupervisor.Text.Trim();
-                var otp = txtOTP.Text.Trim();
-
-                if (string.IsNullOrEmpty(supId) || otp.Length != 6)
-                {
-                    lblEstado.Text = "⚠️ Revisa el No. Empleado y que el OTP sea de 6 dígitos";
-                    lblEstado.SetTextColor(Android.Graphics.Color.Yellow);
-                    return;
-                }
-
-                // Bloqueo visual (Bloque 2)
-                btnValidar.Enabled = false;
-                lblEstado.Text = "⏳ Validando con el servidor...";
-                lblEstado.SetTextColor(Android.Graphics.Color.White);
-
-                var (isValid, supNombre, mensaje) = await _atuService.ValidarOTPAsync(
-                    otp: otp,
-                    embFolio: pedido.Text.Trim(),
-                    prodClave: productocve.Trim(),
-                    reciboSug: folioAtrasado.Trim(),
-                    tarimaSug: tarimaAtrasada.Trim(),
-                    supervisorId: supId);
-
-                if (isValid)
-                {
-                    // ✅ ÉXITO
-                    mAutoriza = !string.IsNullOrEmpty(supNombre) ? supNombre.Trim() : supId;
-
-                    ConsultaInserFolioAdelantado =
-                        "insert into tb_det_folio_adelantado " +
-                        "(responsable, fecha, emb_folio, recibo_cap, fecreccap, " +
-                        "recibo_sug, fecrecsug, prod_clave, producto, cantidad, " +
-                        "autorizo, tarimacap, tarimasug, imei, motivo, fechareal) " +
-                        "values ('" + responsableCorto + "','" +
-                        DateTime.Now.ToString("dd/MM/yyyy hh:mm:ss tt") + "','" +
-                        pedido.Text.Trim() + "', '" + folioLeido.Trim() + "', '" + fechaLeido + "','" +
-                        folioAtrasado + "', '" + fechaAtrasada + "', '" + productocve + "', '" +
-                        producto + "', '" + cajasDisp + "', '" + mAutoriza + "', '" +
-                        tarimaLeido + "', '" + tarimaAtrasada.Trim() + "', '" + imei.Trim() +
-                        "', '" + motivo + "', GETDATE())";
-
-                    lblEstado.Text = "✅ Autorización válida";
-                    lblEstado.SetTextColor(Android.Graphics.Color.LimeGreen);
-
-                    await Task.Delay(1000); // Dar tiempo al usuario de ver el check verde
-                    dialog.Dismiss();
-                }
-                else
-                {
-                    // ❌ ERROR / FRAUDE
-                    btnValidar.Enabled = true; // Reactivar para reintentar
-                    lblEstado.Text = mensaje.Contains("FRAUDE") ? $"🔴 FRAUDE: {mensaje}" : $"❌ {mensaje}";
-                    lblEstado.SetTextColor(Android.Graphics.Color.Red);
-
-                    if (mensaje.Contains("FRAUDE"))
-                    {
-                        new Android.App.AlertDialog.Builder(this)
-                            .SetTitle("🚨 INTENTO DE FRAUDE")
-                            .SetMessage($"Este intento ha sido registrado.\n\n{mensaje}")
-                            .SetNeutralButton("ENTENDIDO", (s2, e2) => { })
-                            .Show();
-                    }
-
-                    txtOTP.Text = "";
-                    txtOTP.RequestFocus();
-                }
-            };
-        }
-
         #endregion
 
         // ── PASO 1: Mostrar dialog de MOTIVO antes de enviar la solicitud ─────────────
         // Llama esto DONDE ANTES mostraba el dialog de contraseña (botón "Autorizar"):
-
         private void IniciarFlujoCargaATU(
+    string folioLeido, string fechaLeido,
+    string folioAtrasado, string fechaAtrasada,
+    string productocve, string producto,
+    string cajasDisp, string tarimaLeido,
+    string tarimaAtrasada)
+        {
+            var motivos = new[]
+            {
+            "Folio Adelantado Requerido Por Cliente",
+            "Folio Adelantado Caja Inexistente",
+            "Folio Adelantado Caja No Encontrada",
+            "Folio Adelantado No Apto Para Carga"
+        };
+            string motivoSeleccionado = motivos[0];
+
+            // ✅ MANDAMIENTO 1: Verificar que el XML exista antes de inflarlo
+            var inflater = LayoutInflater.From(this);
+            if (inflater == null) { Toast.MakeText(this, "Error de sistema", ToastLength.Long).Show(); return; }
+
+            var viewMotivo = inflater.Inflate(Resource.Layout.dialog_atu_motivo, null);
+            if (viewMotivo == null) { Toast.MakeText(this, "Error: Layout dialog_atu_motivo no encontrado", ToastLength.Long).Show(); return; }
+
+            var spinnerMotivo = viewMotivo.FindViewById<Spinner>(Resource.Id.spinnerMotivo);
+            if (spinnerMotivo == null) { Toast.MakeText(this, "Error: Falta ID spinnerMotivo en el XML", ToastLength.Long).Show(); return; }
+
+            var adapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleSpinnerItem, motivos);
+            adapter.SetDropDownViewResource(Android.Resource.Layout.SimpleSpinnerDropDownItem);
+            spinnerMotivo.Adapter = adapter;
+            spinnerMotivo.ItemSelected += (s, e) => motivoSeleccionado = motivos[e.Position];
+
+            new Android.App.AlertDialog.Builder(this)
+                .SetTitle("Motivo del folio adelantado")
+                .SetView(viewMotivo)
+                .SetCancelable(false)
+                .SetPositiveButton("Continuar", (s, e) =>
+                {
+                    MostrarDialogoATU(motivoSeleccionado, folioLeido, fechaLeido, folioAtrasado, fechaAtrasada, productocve, producto, cajasDisp, tarimaLeido, tarimaAtrasada);
+                })
+                .SetNegativeButton("Cancelar", (s, e) => Borrar())
+                .Show();
+        }
+
+        private void MostrarDialogoATU(
+            string motivo, string folioLeido, string fechaLeido,
+            string folioAtrasado, string fechaAtrasada,
+            string productocve, string producto,
+            string cajasDisp, string tarimaLeido, string tarimaAtrasada)
+        {
+            Task.Run(async () =>
+            {
+                bool servidorOk = await _atuService.ServidorDisponibleAsync();
+                RunOnUiThread(() =>
+                {
+                    if (!servidorOk)
+                    {
+                        MostrarDialogoPasswordLegacy(motivo, folioLeido, fechaLeido, folioAtrasado, fechaAtrasada, productocve, producto, cajasDisp, tarimaLeido, tarimaAtrasada);
+                        return;
+                    }
+                    EjecutarFlujoOTP(motivo, folioLeido, fechaLeido, folioAtrasado, fechaAtrasada, productocve, producto, cajasDisp, tarimaLeido, tarimaAtrasada);
+                });
+            });
+        }
+
+        private void EjecutarFlujoOTP(
+            string motivo, string folioLeido, string fechaLeido,
+            string folioAtrasado, string fechaAtrasada,
+            string productocve, string producto,
+            string cajasDisp, string tarimaLeido, string tarimaAtrasada)
+        {
+            var responsableCorto = responsable.Trim().Length > 25 ? responsable.Trim()[..25] : responsable.Trim();
+
+            Task.Run(async () => await _atuService.CrearSolicitudAsync(
+                embFolio: pedido.Text.Trim(), reciboCap: folioLeido.Trim(), reciboSug: folioAtrasado.Trim(),
+                fechaRecCap: fechaLeido, fechaRecSug: fechaAtrasada, prodClave: productocve.Trim(),
+                producto: producto.Trim(), cantidad: cajasDisp.Trim(), tarimaCap: tarimaLeido.Trim(),
+                tarimaSug: tarimaAtrasada.Trim(), responsable: responsableCorto, motivo: motivo, imei: imei.Trim()));
+
+            var inflater = LayoutInflater.From(this);
+            var view = inflater.Inflate(Resource.Layout.dialog_atu_otp, null);
+
+            // ✅ MANDAMIENTO 1: Check estricto de IDs sin usar !
+            if (view == null) { Toast.MakeText(this, "Error: No se encontró dialog_atu_otp.xml", ToastLength.Long).Show(); return; }
+
+            var lblInfo = view.FindViewById<TextView>(Resource.Id.lblAtuInfo);
+            //var txtSupervisor = view.FindViewById<EditText>(Resource.Id.NombreSupervisor);
+            var txtSupervisor = MainActivity.responsablesplit?.Trim() ?? "";
+            var txtOTP = view.FindViewById<EditText>(Resource.Id.txtAtuOtp);
+            var lblEstado = view.FindViewById<TextView>(Resource.Id.lblAtuEstado);
+
+            if (txtSupervisor == null || txtOTP == null || lblEstado == null)
+            {
+                Toast.MakeText(this, "Error crítico: Faltan IDs (NombreSupervisor/txtAtuOtp/lblAtuEstado) en dialog_atu_otp.xml", ToastLength.Long).Show();
+                return;
+            }
+
+            lblInfo.Text = $"Folio: {pedido.Text.Trim()}\nProducto: {productocve} — {producto}\nRecibo: {folioLeido}  |  Tarima: {tarimaLeido}\n\nEspera el código OTP del supervisor.";
+            txtOTP.InputType = Android.Text.InputTypes.ClassNumber;
+
+            var builder = new Android.App.AlertDialog.Builder(this);
+            builder.SetView(view);
+            builder.SetCancelable(false);
+
+            Android.App.AlertDialog dialog = null;
+            builder.SetPositiveButton("✓ VALIDAR OTP", (Android.Content.IDialogInterfaceOnClickListener)null);
+            builder.SetNegativeButton("✕ CANCELAR", (s, e) => { Borrar(); dialog?.Dismiss(); });
+
+            dialog = builder.Create();
+            dialog.Show();
+
+            var btnValidar = dialog.GetButton((int)Android.Content.DialogButtonType.Positive);
+            if (btnValidar == null) return; // Seguro extremo
+
+            btnValidar.Click += async (s, e) =>
+            {
+                try
+                {
+                    //var supId = txtSupervisor.Text.Trim();
+                    var supId = txtSupervisor.Trim();
+                    var otp = txtOTP.Text.Trim();
+
+                    if (string.IsNullOrEmpty(supId)) { lblEstado.Text = "⚠️ Ingresa el No. de Empleado"; lblEstado.SetTextColor(Android.Graphics.Color.Orange); return; }
+                    if (otp.Length != 6) { lblEstado.Text = "⚠️ El OTP deben ser 6 dígitos"; lblEstado.SetTextColor(Android.Graphics.Color.Orange); return; }
+
+                    btnValidar.Enabled = false;
+                    lblEstado.Text = "⏳ Validando con el servidor...";
+                    lblEstado.SetTextColor(Android.Graphics.Color.Gray);
+
+                    // ✅ MANDAMIENTO 2: Se envía el IMEI como DeviceFingerprint (El backend lo exige)
+                    var resultado = await _atuService.ValidarOTPAsync(
+                        otp: otp,
+                        embFolio: pedido.Text.Trim(),
+                        prodClave: productocve.Trim(),
+                        reciboCap: folioAtrasado.Trim(),
+                        tarimaCap: tarimaAtrasada.Trim(),
+                        responsable: supId);
+
+                    bool isValid = resultado.IsValid;
+                    string supNombre = resultado.SupervisorId ?? "";
+                    string mensaje = resultado.Mensaje ?? "";
+
+                    if (isValid)
+                    {
+                        mAutoriza = !string.IsNullOrEmpty(supNombre) ? supNombre.Trim() : supId;
+                        ConsultaInserFolioAdelantado = "insert into tb_det_folio_adelantado (responsable, fecha, emb_folio, recibo_cap, fecreccap, recibo_sug, fecrecsug, prod_clave, producto, cantidad, autorizo, tarimacap, tarimasug, imei, motivo, fechareal) values ('" + responsableCorto + "','" + DateTime.Now.ToString("dd/MM/yyyy hh:mm:ss tt") + "','" + pedido.Text.Trim() + "', '" + folioLeido.Trim() + "', '" + fechaLeido + "','" + folioAtrasado + "', '" + fechaAtrasada + "', '" + productocve + "', '" + producto + "', '" + cajasDisp + "', '" + mAutoriza + "', '" + tarimaLeido + "', '" + tarimaAtrasada.Trim() + "', '" + imei.Trim() + "', '" + motivo + "', GETDATE())";
+
+                        lblEstado.Text = "✓ Autorización válida";
+                        lblEstado.SetTextColor(Android.Graphics.Color.ParseColor("#00AA44"));
+                        await Task.Delay(1000);
+                        dialog.Dismiss();
+                    }
+                    else
+                    {
+                        btnValidar.Enabled = true;
+                        if (mensaje.Contains("FRAUDE"))
+                        {
+                            new Android.App.AlertDialog.Builder(this).SetTitle("🚨 FRAUDE DETECTADO").SetMessage($"El intento queda registrado.\n\n{mensaje}").SetNeutralButton("ENTENDIDO", (s2, e2) => { }).SetCancelable(false).Show();
+                        }
+                        lblEstado.Text = mensaje.Contains("FRAUDE") ? $"🔴 {mensaje}" : $"❌ {mensaje}";
+                        lblEstado.SetTextColor(Android.Graphics.Color.Red);
+                        txtOTP.Text = "";
+                        txtOTP.RequestFocus();
+                    }
+                }
+                catch (Java.Lang.Exception exGeneral)
+                {
+                    btnValidar.Enabled = true;
+                    lblEstado.Text = $"❌ Error: {exGeneral.Message}";
+                    lblEstado.SetTextColor(Android.Graphics.Color.Red);
+                }
+            };
+        }
+        private void IniciarFlujoCargaATULEGACY(
             string folioLeido, string fechaLeido,
             string folioAtrasado, string fechaAtrasada,
             string productocve, string producto,
@@ -9317,7 +9103,7 @@ namespace CargaEmbarques
                 .SetNegativeButton("Cancelar", (s, e) => Borrar())
                 .Show();
         }
-        private void MostrarDialogoATU(
+        private void MostrarDialogoATULEGACY(
     string motivo,
     string folioLeido, string fechaLeido,
     string folioAtrasado, string fechaAtrasada,
@@ -9348,7 +9134,7 @@ namespace CargaEmbarques
             });
         }
 
-        private void EjecutarFlujoOTP(
+        private void EjecutarFlujoOTPLEGACY(
             string motivo,
             string folioLeido, string fechaLeido,
             string folioAtrasado, string fechaAtrasada,
@@ -9415,75 +9201,220 @@ namespace CargaEmbarques
 
             // Lógica de Validación con Override
             var btnValidar = dialog.GetButton((int)Android.Content.DialogButtonType.Positive)!;
-
             btnValidar.Click += async (s, e) =>
             {
-                var supId = txtSupervisor.Text.Trim();
-                var otp = txtOTP.Text.Trim();
-
-                // Validaciones granulares (Bloque 1)
-                if (string.IsNullOrEmpty(supId))
+                try // ✅ ESCUDO PRINCIPAL
                 {
-                    lblEstado.Text = "⚠️ Ingresa el No. de Empleado del supervisor";
-                    lblEstado.SetTextColor(Android.Graphics.Color.Orange);
-                    return;
-                }
+                    var supId = txtSupervisor.Text.Trim();
+                    var otp = txtOTP.Text.Trim();
 
-                if (otp.Length != 6)
-                {
-                    lblEstado.Text = "⚠️ El código OTP debe tener 6 dígitos";
-                    lblEstado.SetTextColor(Android.Graphics.Color.Orange);
-                    return;
-                }
-
-                // Control de UI (Bloque 2)
-                btnValidar.Enabled = false;
-                lblEstado.Text = "⏳ Validando con el servidor...";
-                lblEstado.SetTextColor(Android.Graphics.Color.Gray);
-
-                var (isValid, supNombre, mensaje) = await _atuService.ValidarOTPAsync(
-                    otp: otp,
-                    embFolio: pedido.Text.Trim(),
-                    prodClave: productocve.Trim(),
-                    reciboSug: folioAtrasado.Trim(),
-                    tarimaSug: tarimaAtrasada.Trim(),
-                    supervisorId: supId);
-
-                if (isValid)
-                {
-                    mAutoriza = !string.IsNullOrEmpty(supNombre) ? supNombre.Trim() : supId;
-
-                    ConsultaInserFolioAdelantado =
-                        "insert into tb_det_folio_adelantado (...) " + // (Aquí va tu SQL completo)
-                        "values ('" + responsableCorto + "', ...)";
-
-                    lblEstado.Text = "✓ Autorización válida";
-                    lblEstado.SetTextColor(Android.Graphics.Color.ParseColor("#00AA44"));
-
-                    await Task.Delay(1000);
-                    dialog.Dismiss();
-                }
-                else
-                {
-                    btnValidar.Enabled = true;
-
-                    // Manejo de Fraude con seguridad de hilos (Bloque 1)
-                    if (mensaje.Contains("FRAUDE"))
+                    if (string.IsNullOrEmpty(supId))
                     {
-                        RunOnUiThread(() => new Android.App.AlertDialog.Builder(this)
-                            .SetTitle("🚨 FRAUDE DETECTADO")
-                            .SetMessage($"El intento queda registrado en auditoría.\n\n{mensaje}")
-                            .SetNeutralButton("ENTENDIDO", (s2, e2) => { })
-                            .SetCancelable(false)
-                            .Show());
+                        lblEstado.Text = "⚠️ Ingresa el No. de Empleado";
+                        lblEstado.SetTextColor(Android.Graphics.Color.Orange);
+                        return;
+                    }
+                    if (otp.Length != 6)
+                    {
+                        lblEstado.Text = "⚠️ El OTP deben ser 6 dígitos";
+                        lblEstado.SetTextColor(Android.Graphics.Color.Orange);
+                        return;
                     }
 
-                    lblEstado.Text = mensaje;
+                    btnValidar.Enabled = false;
+                    lblEstado.Text = "⏳ Validando con el servidor...";
+                    lblEstado.SetTextColor(Android.Graphics.Color.Gray);
+
+                    // ✅ ESCUDO SECUNDARIO (por si la red falla o el servidor explota)
+                    bool isValid = false;
+                    string supNombre = "";
+                    string mensaje = "";
+
+                    try
+                    {
+                        var resultado = await _atuService.ValidarOTPAsync(
+                            otp: otp,
+                            embFolio: pedido.Text.Trim(),
+                            prodClave: productocve.Trim(),
+                            reciboCap: folioAtrasado.Trim(),
+                            tarimaCap: tarimaAtrasada.Trim(),
+                            responsable: supId);
+
+                        isValid = resultado.IsValid;
+                        supNombre = resultado.SupervisorId;
+                        mensaje = resultado.Mensaje;
+                    }
+                    catch (Java.Lang.Exception ex)
+                    {
+                        isValid = false;
+                        mensaje = $"Error de red o servidor: {ex.Message}";
+                    }
+
+                    if (isValid)
+                    {
+                        mAutoriza = !string.IsNullOrEmpty(supNombre) ? supNombre.Trim() : supId;
+
+                        ConsultaInserFolioAdelantado =
+                            "insert into tb_det_folio_adelantado " +
+                            "(responsable, fecha, emb_folio, recibo_cap, fecreccap, " +
+                            "recibo_sug, fecrecsug, prod_clave, producto, cantidad, " +
+                            "autorizo, tarimacap, tarimasug, imei, motivo, fechareal) " +
+                            "values ('" + responsableCorto + "','" +
+                            DateTime.Now.ToString("dd/MM/yyyy hh:mm:ss tt") + "','" +
+                            pedido.Text.Trim() + "', '" + folioLeido.Trim() + "', '" + fechaLeido + "','" +
+                            folioAtrasado + "', '" + fechaAtrasada + "', '" + productocve + "', '" +
+                            producto + "', '" + cajasDisp + "', '" + mAutoriza + "', '" +
+                            tarimaLeido + "', '" + tarimaAtrasada.Trim() + "', '" + imei.Trim() +
+                            "', '" + motivo + "', GETDATE())";
+
+                        lblEstado.Text = "✓ Autorización válida";
+                        lblEstado.SetTextColor(Android.Graphics.Color.ParseColor("#00AA44"));
+                        await Task.Delay(1000);
+                        dialog.Dismiss();
+                    }
+                    else
+                    {
+                        btnValidar.Enabled = true;
+
+                        if (mensaje.Contains("FRAUDE"))
+                        {
+                            new Android.App.AlertDialog.Builder(this)
+                                .SetTitle("🚨 FRAUDE DETECTADO")
+                                .SetMessage($"El intento queda registrado.\n\n{mensaje}")
+                                .SetNeutralButton("ENTENDIDO", (s2, e2) => { })
+                                .SetCancelable(false)
+                                .Show();
+                        }
+
+                        lblEstado.Text = mensaje.Contains("FRAUDE") ? $"🔴 {mensaje}" : $"❌ {mensaje}";
+                        lblEstado.SetTextColor(Android.Graphics.Color.Red);
+                        txtOTP.Text = "";
+                        txtOTP.RequestFocus();
+                    }
+                }
+                catch (Java.Lang.Exception exGeneral) // ✅ SI ALGO MATA LA APP, CAE AQUÍ
+                {
+                    // En lugar de cerrar la app, muestra el error en la pantalla
+                    btnValidar.Enabled = true;
+                    lblEstado.Text = $"❌ Error interno: {exGeneral.Message}";
                     lblEstado.SetTextColor(Android.Graphics.Color.Red);
-                    txtOTP.Text = "";
-                    txtOTP.RequestFocus();
+
+                    // Opcional: ver el error completo en la consola de Visual Studio
+                    System.Diagnostics.Debug.WriteLine($"ERROR OTP: {exGeneral}");
                 }
             };
+        }
+
+        // --- MÉTODOS DE APOYO PARA VALIDACIÓN Y CIERRE DE EMBARQUE ---
+
+        private void ValidarYGuardarEmbarque(string folio)
+        {
+            string erroresDiferencia = "";
+
+            try
+            {
+                if (thisConnection.State == ConnectionState.Closed) thisConnection.Open();
+
+                // 1. Verificar si hay diferencias entre pedido y surtido
+                string sqlDif = "SELECT DISTINCT CANT_PED, CANT_SUR, NOM_PROD FROM tb_ped_embarque WHERE emb_folio=@folio AND NALEXP=@tipo";
+                using (SqlCommand cmd = new SqlCommand(sqlDif, thisConnection))
+                {
+                    cmd.Parameters.AddWithValue("@folio", folio);
+                    cmd.Parameters.AddWithValue("@tipo", tipoped);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            int pedidoCant = Convert.ToInt32(reader["CANT_PED"]);
+                            int surtidoCant = Convert.ToInt32(reader["CANT_SUR"]);
+                            if (pedidoCant != surtidoCant)
+                            {
+                                erroresDiferencia += $"{reader["NOM_PROD"]}: Ped {pedidoCant} / Sur {surtidoCant}\n";
+                            }
+                        }
+                    }
+                }
+            }
+            catch (System.Exception ex) { Toast.MakeText(this, "Error: " + ex.Message, ToastLength.Long).Show(); }
+            finally { if (thisConnection.State == ConnectionState.Open) thisConnection.Close(); }
+
+            // 2. Definir la acción final de guardado
+            Action<string> accionFinal = (obsFinal) => {
+                EjecutarGuardadoFinal(folio, obsFinal);
+            };
+
+            // 3. Flujo de Diálogos
+            if (!string.IsNullOrEmpty(erroresDiferencia))
+            {
+                // Caso A: Hay diferencias de mercancía
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.SetTitle("DIFERENCIA DETECTADA");
+                builder.SetMessage("El surtido no coincide con el pedido. ¿Desea continuar con el cierre?");
+                builder.SetPositiveButton("Continuar", (s, a) => {
+                    // Si acepta la diferencia, ahora evaluamos si necesita el diálogo de observaciones (6h / 12am)
+                    MostrarDialogoObservacionesSiAplica(folio, accionFinal);
+                });
+                builder.SetNegativeButton("Cancelar", (s, a) => { });
+                builder.Show();
+            }
+            else
+            {
+                // Caso B: No hay diferencias, ir directo a validar tiempo en planta
+                MostrarDialogoObservacionesSiAplica(folio, accionFinal);
+            }
+        }
+
+        private void EjecutarGuardadoFinal(string folio, string observacionExtra)
+        {
+            try
+            {
+                if (thisConnection.State == ConnectionState.Closed) thisConnection.Open();
+
+                // 1. Validar Split
+                SqlCommand cmdSplit = new SqlCommand("SELECT COUNT(*) FROM tb_det_split WHERE emb_folio=@f AND estatus='A'", thisConnection);
+                cmdSplit.Parameters.AddWithValue("@f", folio);
+                if ((int)cmdSplit.ExecuteScalar() > 0)
+                {
+                    Toast.MakeText(this, "No se puede cerrar: Tiene Splits pendientes.", ToastLength.Long).Show();
+                    return;
+                }
+
+                // 2. Obtener cajas
+                SqlCommand cmdCajas = new SqlCommand("SELECT ISNULL(SUM(cajas),0) FROM tb_det_embarque WHERE emb_folio=@f", thisConnection);
+                cmdCajas.Parameters.AddWithValue("@f", folio);
+                int totalCajas = Convert.ToInt32(cmdCajas.ExecuteScalar());
+
+                // 3. Actualizar Maestro
+                string hora = DateTime.Now.ToString("hh:mm tt").Replace(" ", "").ToLower();
+                string sqlUpd = "UPDATE tb_mstr_embarque SET hora_fin=@h, cajas=@c, sts='T', EMB_obs=@obs WHERE emb_folio=@f";
+                using (SqlCommand cmd = new SqlCommand(sqlUpd, thisConnection))
+                {
+                    cmd.Parameters.AddWithValue("@h", hora);
+                    cmd.Parameters.AddWithValue("@c", totalCajas);
+                    cmd.Parameters.AddWithValue("@obs", observacionExtra);
+                    cmd.Parameters.AddWithValue("@f", folio);
+                    cmd.ExecuteNonQuery();
+                }
+
+                // 4. Actualizar Pedidos (Nacional o Expo)
+                string tabla = (tipoped == "EXP") ? "tb_mstr_pedidos_exp" : "tb_mstr_pedidos_nal";
+                string sqlPed = $"UPDATE {tabla} SET pdn_surtido='S' WHERE pdn_folio=@f";
+                using (SqlCommand cmd = new SqlCommand(sqlPed, thisConnection))
+                {
+                    cmd.Parameters.AddWithValue("@f", folio);
+                    cmd.ExecuteNonQuery();
+                }
+
+                // 5. Cerrar Acceso Celulares
+                SqlCommand cmdAcc = new SqlCommand("UPDATE tb_det_acceso_celulares SET estado='T' WHERE folio=@f AND sistema='CargaEmbarques'", thisConnection);
+                cmdAcc.Parameters.AddWithValue("@f", folio);
+                cmdAcc.ExecuteNonQuery();
+
+                Toast.MakeText(this, "Embarque Cerrado con Éxito", ToastLength.Short).Show();
+                Limpiar(); // Método para resetear la pantalla
+            }
+            catch (System.Exception ex) { Toast.MakeText(this, "Error Final: " + ex.Message, ToastLength.Long).Show(); }
+            finally { if (thisConnection.State == ConnectionState.Open) thisConnection.Close(); }
         }
     }
 }
