@@ -9010,10 +9010,6 @@ ORDER BY t.fecha DESC";
 
 
         #region ATU
-
-
-
-
         #region ATU Legacy Password Dialog
         private void MostrarDialogoPasswordLegacy(
             string motivo,
