@@ -37,8 +37,8 @@ namespace CargaEmbarques
         WSCargaEmbarques192.WebServiceEmbarques proxyLocal = new WSCargaEmbarques192.WebServiceEmbarques();
         WSCargaEmbarques189.WebServiceEmbarques proxy = new WSCargaEmbarques189.WebServiceEmbarques();
 
-        public static string cadenaConexion = "Persist Security Info=False;user id=sa; password=Gabira1;Initial Catalog = GAB_Irapuato; server=tcp:189.206.160.206,2352; MultipleActiveResultSets=true; Connect Timeout = 0";
-        //public static string cadenaConexion = "Persist Security Info=False;user id=sa; password=Gabira1;Initial Catalog = GAB_Irapuato; server=tcp:192.168.123.6,1433; MultipleActiveResultSets=true; Connect Timeout = 0";
+        public static string cadenaConexion = "Persist Security Info=False;user id=sa; password=Gabira2026$;Initial Catalog = GAB_Irapuato; server=tcp:189.206.160.206,2352; MultipleActiveResultSets=true; Connect Timeout = 0";
+        //public static string cadenaConexion = "Persist Security Info=False;user id=sa; password=Gabira2026$;Initial Catalog = GAB_Irapuato; server=tcp:192.168.123.6,1433; MultipleActiveResultSets=true; Connect Timeout = 0";
 
         SqlConnection thisConnection = new SqlConnection(MainActivity.cadenaConexion);
         public static string veh = "";
@@ -138,7 +138,7 @@ namespace CargaEmbarques
             if (!isOnline || !validaservidores())
             {
                 INFO_FILE = "http://192.168.123.4:81/EmbarquesApk/CargaEmbarquesTablet/version.txt";
-                cadenaConexion = "Persist Security Info=False;user id=sa; password=Gabira1;Initial Catalog = GAB_Irapuato; server=tcp:192.168.123.6,1433; MultipleActiveResultSets=true; Connect Timeout = 0";
+                cadenaConexion = "Persist Security Info=False;user id=sa; password=Gabira2026$;Initial Catalog = GAB_Irapuato; server=tcp:192.168.123.6,1433; MultipleActiveResultSets=true; Connect Timeout = 0";
 
                 //GuardarLocal GuardaError = new GuardarLocal();
                 //GuardaError.creartxt("Error en la conexion de red, No esta conectado a ninguna red");

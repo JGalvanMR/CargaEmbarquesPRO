@@ -34,6 +34,7 @@ namespace CargaEmbarques
     [Activity(Label = "INFORMACION DEL TRAILER", ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation, ScreenOrientation = ScreenOrientation.Sensor)]
     public class Frmtrailer : Activity
     {
+        #region VARIABLES GLOBALES DE LA CLASE
         public static string responsable;
         SqlConnection thisConnection = new SqlConnection(MainActivity.cadenaConexion);
         SqlDataAdapter da;
@@ -132,7 +133,7 @@ namespace CargaEmbarques
         string status = "";
 
         string imei = "";
-
+        #endregion
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);

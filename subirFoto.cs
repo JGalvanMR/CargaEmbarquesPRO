@@ -165,7 +165,7 @@ namespace CargaEmbarques
 
         private void Guardar_Click(object sender, EventArgs e)
         {
-            //string nombrefoto = subir_firma(pathimagen);
+            string nombrefoto = subir_firma(pathimagen);
 
             /*thisConnection.Open();
             cmnd1 = thisConnection.CreateCommand();

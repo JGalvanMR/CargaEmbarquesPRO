@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<wsdl:definitions xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="http://192.168.123.4:81/WebServiceEmbarques" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" targetNamespace="http://192.168.123.4:81/WebServiceEmbarques" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+<wsdl:definitions xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="http://189.206.160.206:81/WebServiceEmbarques" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" targetNamespace="http://189.206.160.206:81/WebServiceEmbarques" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
   <wsdl:types>
-    <s:schema elementFormDefault="qualified" targetNamespace="http://192.168.123.4:81/WebServiceEmbarques">
+    <s:schema elementFormDefault="qualified" targetNamespace="http://189.206.160.206:81/WebServiceEmbarques">
       <s:element name="HelloWorld">
         <s:complexType />
       </s:element>
@@ -407,7 +407,7 @@
   <wsdl:binding name="WebServiceEmbarquesSoap" type="tns:WebServiceEmbarquesSoap">
     <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
     <wsdl:operation name="HelloWorld">
-      <soap:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/HelloWorld" style="document" />
+      <soap:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/HelloWorld" style="document" />
       <wsdl:input>
         <soap:body use="literal" />
       </wsdl:input>
@@ -416,7 +416,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="EnviarPosibleDiferenciaEmbarques">
-      <soap:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/EnviarPosibleDiferenciaEmbarques" style="document" />
+      <soap:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/EnviarPosibleDiferenciaEmbarques" style="document" />
       <wsdl:input>
         <soap:body use="literal" />
       </wsdl:input>
@@ -425,7 +425,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="getDestinatarios">
-      <soap:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/getDestinatarios" style="document" />
+      <soap:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/getDestinatarios" style="document" />
       <wsdl:input>
         <soap:body use="literal" />
       </wsdl:input>
@@ -434,7 +434,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="SendMail">
-      <soap:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/SendMail" style="document" />
+      <soap:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/SendMail" style="document" />
       <wsdl:input>
         <soap:body use="literal" />
       </wsdl:input>
@@ -443,7 +443,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="Activarboton">
-      <soap:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/Activarboton" style="document" />
+      <soap:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/Activarboton" style="document" />
       <wsdl:input>
         <soap:body use="literal" />
       </wsdl:input>
@@ -452,7 +452,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="ActivarHoraInicio">
-      <soap:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/ActivarHoraInicio" style="document" />
+      <soap:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/ActivarHoraInicio" style="document" />
       <wsdl:input>
         <soap:body use="literal" />
       </wsdl:input>
@@ -461,7 +461,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="Version">
-      <soap:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/Version" style="document" />
+      <soap:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/Version" style="document" />
       <wsdl:input>
         <soap:body use="literal" />
       </wsdl:input>
@@ -470,7 +470,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="VersionAguilares">
-      <soap:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/VersionAguilares" style="document" />
+      <soap:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/VersionAguilares" style="document" />
       <wsdl:input>
         <soap:body use="literal" />
       </wsdl:input>
@@ -479,7 +479,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="VersionUbicaciones">
-      <soap:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/VersionUbicaciones" style="document" />
+      <soap:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/VersionUbicaciones" style="document" />
       <wsdl:input>
         <soap:body use="literal" />
       </wsdl:input>
@@ -488,7 +488,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="SendMailPersonal">
-      <soap:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/SendMailPersonal" style="document" />
+      <soap:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/SendMailPersonal" style="document" />
       <wsdl:input>
         <soap:body use="literal" />
       </wsdl:input>
@@ -500,7 +500,7 @@
   <wsdl:binding name="WebServiceEmbarquesSoap12" type="tns:WebServiceEmbarquesSoap">
     <soap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
     <wsdl:operation name="HelloWorld">
-      <soap12:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/HelloWorld" style="document" />
+      <soap12:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/HelloWorld" style="document" />
       <wsdl:input>
         <soap12:body use="literal" />
       </wsdl:input>
@@ -509,7 +509,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="EnviarPosibleDiferenciaEmbarques">
-      <soap12:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/EnviarPosibleDiferenciaEmbarques" style="document" />
+      <soap12:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/EnviarPosibleDiferenciaEmbarques" style="document" />
       <wsdl:input>
         <soap12:body use="literal" />
       </wsdl:input>
@@ -518,7 +518,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="getDestinatarios">
-      <soap12:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/getDestinatarios" style="document" />
+      <soap12:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/getDestinatarios" style="document" />
       <wsdl:input>
         <soap12:body use="literal" />
       </wsdl:input>
@@ -527,7 +527,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="SendMail">
-      <soap12:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/SendMail" style="document" />
+      <soap12:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/SendMail" style="document" />
       <wsdl:input>
         <soap12:body use="literal" />
       </wsdl:input>
@@ -536,7 +536,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="Activarboton">
-      <soap12:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/Activarboton" style="document" />
+      <soap12:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/Activarboton" style="document" />
       <wsdl:input>
         <soap12:body use="literal" />
       </wsdl:input>
@@ -545,7 +545,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="ActivarHoraInicio">
-      <soap12:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/ActivarHoraInicio" style="document" />
+      <soap12:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/ActivarHoraInicio" style="document" />
       <wsdl:input>
         <soap12:body use="literal" />
       </wsdl:input>
@@ -554,7 +554,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="Version">
-      <soap12:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/Version" style="document" />
+      <soap12:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/Version" style="document" />
       <wsdl:input>
         <soap12:body use="literal" />
       </wsdl:input>
@@ -563,7 +563,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="VersionAguilares">
-      <soap12:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/VersionAguilares" style="document" />
+      <soap12:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/VersionAguilares" style="document" />
       <wsdl:input>
         <soap12:body use="literal" />
       </wsdl:input>
@@ -572,7 +572,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="VersionUbicaciones">
-      <soap12:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/VersionUbicaciones" style="document" />
+      <soap12:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/VersionUbicaciones" style="document" />
       <wsdl:input>
         <soap12:body use="literal" />
       </wsdl:input>
@@ -581,7 +581,7 @@
       </wsdl:output>
     </wsdl:operation>
     <wsdl:operation name="SendMailPersonal">
-      <soap12:operation soapAction="http://192.168.123.4:81/WebServiceEmbarques/SendMailPersonal" style="document" />
+      <soap12:operation soapAction="http://189.206.160.206:81/WebServiceEmbarques/SendMailPersonal" style="document" />
       <wsdl:input>
         <soap12:body use="literal" />
       </wsdl:input>

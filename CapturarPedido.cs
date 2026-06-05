@@ -49,8 +49,8 @@ namespace CargaEmbarques
     public class CapturarPedido : Activity, ILocationListener
     {
         #region VARIABLES
-        public static string cadenaConexion = "Persist Security Info=False;user id=sa; password=Gabira1;Initial Catalog =GAB_Irapuato; server=tcp:189.206.160.206,2352; Connect Timeout = 130";
-        //public static string cadenaConexion = "Persist Security Info=False;user id=sa; password=Gabira1;Initial Catalog =GAB_Irapuato; server=tcp:192.168.123.6,1433; Connect Timeout = 0";
+        public static string cadenaConexion = "Persist Security Info=False;user id=sa; password=Gabira2026$;Initial Catalog =GAB_Irapuato; server=tcp:189.206.160.206,2352; Connect Timeout = 130";
+        //public static string cadenaConexion = "Persist Security Info=False;user id=sa; password=Gabira2026$;Initial Catalog =GAB_Irapuato; server=tcp:192.168.123.6,1433; Connect Timeout = 0";
         WSCargaEmbarques192.WebServiceEmbarques notificarFalloEtiquetasLocal = new WSCargaEmbarques192.WebServiceEmbarques();
         WSCargaEmbarques189.WebServiceEmbarques notificarFalloEtiquetas = new WSCargaEmbarques189.WebServiceEmbarques();
         WSCargaEmbarques192.WebServiceEmbarques notificarCargaExcesivaLocal = new WSCargaEmbarques192.WebServiceEmbarques();
@@ -3253,7 +3253,7 @@ namespace CargaEmbarques
                     Anden.Text = Info["anden"].ToString().Trim();
                     if (ordenventa == Info["EMB_FOLIO"].ToString().Trim())
                     {
-                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() == "T")
+                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() != "T")
                         {
                             AlertDialog.Builder dialog = new AlertDialog.Builder(this);
                             AlertDialog alert = dialog.Create();
@@ -3898,7 +3898,69 @@ namespace CargaEmbarques
         }
 
         #region METODOS UTILIZADOS PARA TOMAR FOTOS A LA CARGA DEL EMBARQUE
-        private void Btnevent_Click(object sender, EventArgs e)
+
+        private async void Btnevent_Click(object sender, EventArgs e)
+        {
+            // 1. Deshabilitar el botón de inmediato para evitar que el usuario haga doble clic mientras espera
+            var button = (Android.Widget.Button)sender;
+            button.Enabled = false;
+
+            string conse = "0";
+
+            try
+            {
+                // 2. Abrir la conexión de forma asincrónica (no bloquea la pantalla)
+                if (thisConnection.State == ConnectionState.Closed)
+                {
+                    await thisConnection.OpenAsync();
+                }
+
+                // BUENA PRÁCTICA: Usar parámetros evita que la app falle con caracteres especiales y protege de SQL Injection
+                cadena = "SELECT conse FROM tb_mstr_trailer WHERE (no_trailer = @noTrailer) AND (hora_trailer = @horaTrailer)";
+
+                using (SqlCommand cmd = new SqlCommand(cadena, thisConnection))
+                {
+                    cmd.Parameters.AddWithValue("@noTrailer", Notrailer.Text.Trim());
+                    cmd.Parameters.AddWithValue("@horaTrailer", fecha.Text.Trim());
+
+                    // 3. Ejecutar la consulta de forma asincrónica
+                    using (SqlDataReader Info = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await Info.ReadAsync())
+                        {
+                            conse = Info["conse"].ToString().Trim();
+                        }
+                    }
+                }
+            }
+            catch (Java.Lang.Exception ex)
+            {
+                // Manejar errores de base de datos de forma segura (ej. sin internet, timeout)
+                Android.Util.Log.Error("CargaEmbarques", $"Error de Base de Datos: {ex.Message}");
+            }
+            finally
+            {
+                // 4. Asegurar que la conexión se cierre y el botón se vuelva a activar siempre
+                if (thisConnection.State == ConnectionState.Open)
+                {
+                    thisConnection.Close();
+                }
+                button.Enabled = true;
+            }
+
+            // 5. Lanzar el Intent de manera fluida una vez obtenidos los datos
+            Intent intent = new Intent(this, typeof(subirFoto));
+            intent.PutExtra("responsable", responsable.ToString().Trim());
+            intent.PutExtra("OrdenVenta", pedido.Text.ToString().Trim());
+            intent.PutExtra("Posicion", Posicion.Text.ToString().Trim());
+            intent.PutExtra("placastrailer", Notrailer.Text.Trim());
+            intent.PutExtra("fechatrailer", fecha.Text.Trim());
+            intent.PutExtra("conse", conse.Trim());
+            intent.PutExtra("imei", imei.Trim().ToString());
+
+            StartActivityForResult(intent, PICK_CONTACT_REQUEST);
+        }
+        private void Btnevent_ClickLEGACY(object sender, EventArgs e)
         {
             string conse = "0";
             if (thisConnection.State == ConnectionState.Closed)
@@ -6819,6 +6881,7 @@ namespace CargaEmbarques
                             ad.SetPositiveButton(Html.FromHtml("<font face = 'Comic Sans MS, arial' color='#DF0101' size = '10'>Guardar</font>"), (senderdiferencia, argsdiferencia) =>
                             {
                                 observaciones = et.Text;
+                                string obsFinal = (string.IsNullOrEmpty(observacionExtra) ? "" : observacionExtra + ". ") + observaciones;
                                 if (correo == "")
                                 {
                                     Toast.MakeText(this, "Favor de Notificar Posible Diferencia de Embarques Antes de Guardar el embarque", ToastLength.Long).Show();
@@ -6861,7 +6924,7 @@ namespace CargaEmbarques
                                         cmd = new SqlCommand(cadena, thisConnection);
                                         V_Cajas = Convert.ToInt32(cmd.ExecuteScalar());
 
-                                        cadena = "UPDATE tb_mstr_embarque SET  hora_fin = '" + DateTime.Now.ToString("hh:mm tt").Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "', cajas = '" + V_Cajas + "', sts = 'T', EMB_obs = '" + observaciones + "' WHERE emb_folio = '" + pedido.Text + "' ";
+                                        cadena = "UPDATE tb_mstr_embarque SET  hora_fin = '" + DateTime.Now.ToString("hh:mm tt").Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "', cajas = '" + V_Cajas + "', sts = 'T', EMB_obs = '" + obsFinal + "' WHERE emb_folio = '" + pedido.Text + "' ";
                                         cmd = new SqlCommand(cadena, thisConnection);
                                         cmd.ExecuteNonQuery();
 
@@ -6928,7 +6991,8 @@ namespace CargaEmbarques
                                     {
                                         thisConnection.Open();
                                     }
-                                    cadena = "UPDATE tb_mstr_embarque SET  EMB_obs = '" + observaciones + "', horaenvcorreo = GETDATE() WHERE emb_folio = '" + pedido.Text + "' ";
+                                    string obsFinal = (string.IsNullOrEmpty(observacionExtra) ? "" : observacionExtra + ". ") + observaciones;
+                                    cadena = "UPDATE tb_mstr_embarque SET  EMB_obs = '" + obsFinal + "', horaenvcorreo = GETDATE() WHERE emb_folio = '" + pedido.Text + "' ";
                                     cmd = new SqlCommand(cadena, thisConnection);
                                     minutos = Convert.ToInt32(cmd.ExecuteScalar());
                                     if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
@@ -7022,7 +7086,9 @@ namespace CargaEmbarques
                             cmd = new SqlCommand(cadena, thisConnection);
                             V_Cajas = Convert.ToInt32(cmd.ExecuteScalar());
 
-                            cadena = "UPDATE tb_mstr_embarque SET  hora_fin = '" + DateTime.Now.ToString("hh:mm tt").Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "', cajas = '" + V_Cajas + "', sts = 'T', EMB_obs = '" + observaciones + "' WHERE emb_folio = '" + pedido.Text + "' ";
+                            string obsFinal = (string.IsNullOrEmpty(observacionExtra) ? "" : observacionExtra + ". ") + observaciones;
+
+                            cadena = "UPDATE tb_mstr_embarque SET  hora_fin = '" + DateTime.Now.ToString("hh:mm tt").Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "', cajas = '" + V_Cajas + "', sts = 'T', EMB_obs = '" + obsFinal + "' WHERE emb_folio = '" + pedido.Text + "' ";
                             cmd = new SqlCommand(cadena, thisConnection);
                             cmd.ExecuteNonQuery();
 
@@ -7567,17 +7633,26 @@ namespace CargaEmbarques
 
         public void validarCargaAdicional()
         {
+            #region TERMOGRABADOR
+            Func<string, bool> esTermograValido = codigo => codigo.Trim() == "17TERMOGRA" && ProductoExisteEnPedido(pedido.Text.Trim(), "17TERMOGRA");
+            if (esTermograValido(codigoetiqueta.Text))
+            {
+                Surtir17TermograDirecto(); // método que encapsula el surtido directo
+                return; // salimos sin ejecutar el resto del código de carga adicional
+            }
+            // Si el código era "17TERMOGRA" pero no está en el pedido, podrías mostrar un error
+            if (codigoetiqueta.Text.Trim() == "17TERMOGRA")
+            {
+                MostrarAlerta("Producto no válido", "Este pedido no requiere 17TERMOGRA", Resource.Drawable.warning);
+                return;
+            }
+            #endregion
             string placatrailer = "1";
             string fechatrailer = "1";
             string Observaciones = "";
             string pedido_adicional_facturado = "";
 
             string VTipoAdicional = "";
-
-
-
-
-
 
             if (thisConnection.State == ConnectionState.Closed) { thisConnection.Open(); }
             cadena = "Select hora_trailer, no_trailer, observaciones, pdn_adicional From tb_det_pend_embarque WHERE claveunica = '" + codigoetiqueta.Text.Trim() + "'";
@@ -7767,7 +7842,96 @@ namespace CargaEmbarques
                 }
             }
         }
+        #region METODOS DE CARGA ADICIONAL PARA PRODUCTOS ESPECIALES
+        private void Surtir17TermograDirecto()
+        {
+            // Ajusta los valores fijos según tu proceso (tipo, sección, etc.)
+            string insertEmb = @"INSERT INTO tb_det_embarque 
+        (emb_folio, prod_clave, no_lote, cajas, seccion, temp, emb_tipo, tarima, tarima_f, tipo_rec, estatus,
+         FEC_CAD, FECHACAD, FECHACAP, OPCAP, ID_TARIMA, RECIBO, id_lectora, datecaptura)
+        VALUES 
+        (@folio, '17TERMOGRA', '11111117TERMOGRA 1', 1, 30, '34', 'NAL', '1', '1', 'PTP', 'A',
+         '', '', @fecha, 'N', 'ESP', '111111', @imei, GETDATE())";
 
+            string insertMov = @"INSERT INTO TB_REGISTRO_MOVIMIENTOS 
+        (FECHA, NOM_COMPU, NOM_USU, TIPO_MOV, OP_CLAVE, FOLIO, DETALLE, SISTEMA, MOV_FOLIO)
+        VALUES 
+        (GETDATE(), @imei, '', 'S', '7.1', @folio, 'SURTIDO DIRECTO 17TERMOGRA', 'SIPGAB', @folio)";
+
+            try
+            {
+                if (thisConnection.State == ConnectionState.Closed)
+                    thisConnection.Open();
+
+                using (var cmdEmb = new SqlCommand(insertEmb, thisConnection))
+                {
+                    cmdEmb.Parameters.AddWithValue("@folio", pedido.Text.Trim());
+                    cmdEmb.Parameters.AddWithValue("@fecha", fecha.Text.Trim());
+                    cmdEmb.Parameters.AddWithValue("@imei", imei);
+                    cmdEmb.ExecuteNonQuery();
+                }
+
+                using (var cmdMov = new SqlCommand(insertMov, thisConnection))
+                {
+                    cmdMov.Parameters.AddWithValue("@folio", pedido.Text.Trim());
+                    cmdMov.Parameters.AddWithValue("@imei", imei);
+                    cmdMov.ExecuteNonQuery();
+                }
+
+                // Alerta de éxito (puedes usar el helper MostrarAlerta)
+                MostrarAlerta("Producto Directo", "17TERMOGRA surtido exitosamente al pedido", Resource.Drawable.exito);
+            }
+            catch (Java.Lang.Exception ex)
+            {
+                MostrarAlerta("Error", "No se pudo surtir 17TERMOGRA: " + ex.Message, Resource.Drawable.warning);
+            }
+            finally
+            {
+                if (thisConnection.State == ConnectionState.Open)
+                    thisConnection.Close();
+            }
+        }
+        private void MostrarAlerta(string titulo, string mensaje, int icono)
+        {
+            Android.App.AlertDialog.Builder alert = new Android.App.AlertDialog.Builder(this);
+            alert.SetTitle(Html.FromHtml($"<font color='#FFC107' size=10>{titulo}</font>"));
+            alert.SetIcon(icono);
+            alert.SetMessage(Html.FromHtml($"<font color='#000000' size=10>{mensaje}</font>"));
+            alert.SetCancelable(false);
+            alert.SetNeutralButton("Ok", delegate { alert.Dispose(); });
+            alert.Show();
+        }
+        private bool ProductoExisteEnPedido(string folioPedido, string prodClave)
+        {
+            string query = @"SELECT COUNT(*) 
+                     FROM tb_det_pedidos 
+                     WHERE pdn_folio = @folio AND prod_clave = @clave 
+                     AND pdn_num_unidades > 0";  // ajusta según tu esquema
+
+            try
+            {
+                if (thisConnection.State == ConnectionState.Closed)
+                    thisConnection.Open();
+
+                using (var cmd = new SqlCommand(query, thisConnection))
+                {
+                    cmd.Parameters.AddWithValue("@folio", folioPedido);
+                    cmd.Parameters.AddWithValue("@clave", prodClave);
+                    int count = (int)cmd.ExecuteScalar();
+                    return count > 0;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                if (thisConnection.State == ConnectionState.Open)
+                    thisConnection.Close();
+            }
+        }
+        #endregion
         protected override void OnResume()
         {
             base.OnResume();
@@ -9339,7 +9503,8 @@ ORDER BY t.fecha DESC";
             finally { if (thisConnection.State == ConnectionState.Open) thisConnection.Close(); }
 
             // 2. Definir la acción final de guardado
-            Action<string> accionFinal = (obsFinal) => {
+            Action<string> accionFinal = (obsFinal) =>
+            {
                 EjecutarGuardadoFinal(folio, obsFinal);
             };
 
@@ -9350,7 +9515,8 @@ ORDER BY t.fecha DESC";
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.SetTitle("DIFERENCIA DETECTADA");
                 builder.SetMessage("El surtido no coincide con el pedido. ¿Desea continuar con el cierre?");
-                builder.SetPositiveButton("Continuar", (s, a) => {
+                builder.SetPositiveButton("Continuar", (s, a) =>
+                {
                     // Si acepta la diferencia, ahora evaluamos si necesita el diálogo de observaciones (6h / 12am)
                     MostrarDialogoObservacionesSiAplica(folio, accionFinal);
                 });
