@@ -2729,7 +2729,7 @@ namespace CargaEmbarques
                     Anden.Text = Info["anden"].ToString().Trim();
                     if (ordenventa == Info["EMB_FOLIO"].ToString().Trim())
                     {
-                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() != "T")
+                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() == "T")
                         {
                             AlertDialog.Builder dialog = new AlertDialog.Builder(this);
                             AlertDialog alert = dialog.Create();
@@ -3253,7 +3253,7 @@ namespace CargaEmbarques
                     Anden.Text = Info["anden"].ToString().Trim();
                     if (ordenventa == Info["EMB_FOLIO"].ToString().Trim())
                     {
-                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() != "T")
+                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() == "T")
                         {
                             AlertDialog.Builder dialog = new AlertDialog.Builder(this);
                             AlertDialog alert = dialog.Create();
