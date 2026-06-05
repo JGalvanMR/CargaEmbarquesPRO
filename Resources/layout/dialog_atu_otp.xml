@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingLeft="24dp"
+    android:paddingRight="24dp"
+    android:paddingTop="20dp"
+    android:paddingBottom="20dp"
+    android:background="#FFFFFF">
+
+	<TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Autorización ATU"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="#1A237E"
+        android:gravity="center"
+        android:paddingBottom="12dp"/>
+
+	<TextView
+        android:id="@+id/lblAtuInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#455A64"
+        android:textSize="14sp"
+        android:lineSpacingExtra="2dp"
+        android:background="#F0F2F5"
+        android:padding="12dp"
+        android:layout_marginBottom="20dp"/>
+
+	<TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="INGRESE CÓDIGO OTP"
+        android:textColor="#78909C"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:paddingBottom="4dp"/>
+
+	<EditText
+        android:id="@+id/txtAtuOtp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="_ _ _ _ _ _"
+        android:textColorHint="#CFD8DC"
+        android:textColor="#1A237E"
+        android:textSize="44sp"
+        android:typeface="monospace"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:inputType="number"
+        android:maxLength="6"
+        android:background="@null"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp" />
+
+	<View
+        android:layout_width="140dp"
+        android:layout_height="3dp"
+        android:layout_gravity="center_horizontal"
+        android:background="#1A237E"
+        android:layout_marginBottom="12dp"/>
+
+	<TextView
+        android:id="@+id/lblAtuEstado"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="13sp"
+        android:textColor="#C62828"
+        android:gravity="center"
+        android:minHeight="24dp"
+        android:paddingTop="2dp"/>
+
+</LinearLayout>

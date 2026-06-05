@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- CargaEmbarques/Resources/layout/dialog_atu_motivo.xml -->
+<!-- Se muestra ANTES del dialog de OTP para capturar el motivo -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#FFFFFF">
+
+	<TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Selecciona el motivo del folio adelantado:"
+        android:textColor="#333333"
+        android:textSize="14sp"
+        android:paddingBottom="12dp"/>
+
+	<Spinner
+        android:id="@+id/spinnerMotivo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:drawable/btn_dropdown"
+        android:padding="8dp"/>
+
+</LinearLayout>

@@ -12,6 +12,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>CargaEmbarques</RootNamespace>
     <AssemblyName>CargaEmbarques</AssemblyName>
+	  <LangVersion>latest</LangVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>True</Deterministic>
     <AndroidApplication>True</AndroidApplication>
@@ -106,6 +107,7 @@
     <Compile Include="myGVitemAdapter.cs" />
     <Compile Include="PesoXEjesFragment2.cs" />
     <Compile Include="PesoXEjesFragment.cs" />
+    <Compile Include="Services\ATUService.cs" />
     <Compile Include="subirFoto.cs" />
     <Compile Include="MainActivity.cs" />
     <Compile Include="Resources\Resource.designer.cs" />
@@ -199,6 +201,9 @@
     </PackageReference>
     <PackageReference Include="System.Net.Http">
       <Version>4.3.4</Version>
+    </PackageReference>
+    <PackageReference Include="System.Text.Json">
+      <Version>10.0.5</Version>
     </PackageReference>
     <PackageReference Include="Xam.Plugin.DeviceInfo">
       <Version>4.1.1</Version>
@@ -554,6 +559,16 @@
   <ItemGroup>
     <AndroidResource Include="Resources\drawable\alert_background.xml">
       <Generator>MSBuild:UpdateGeneratedFiles</Generator>
+      <SubType>Designer</SubType>
+    </AndroidResource>
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidResource Include="Resources\layout\dialog_atu_otp.xml">
+      <SubType>Designer</SubType>
+    </AndroidResource>
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidResource Include="Resources\layout\dialog_atu_motivo.xml">
       <SubType>Designer</SubType>
     </AndroidResource>
   </ItemGroup>

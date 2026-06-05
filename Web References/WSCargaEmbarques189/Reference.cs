@@ -26,7 +26,7 @@ namespace CargaEmbarques.WSCargaEmbarques189 {
     [System.CodeDom.Compiler.GeneratedCodeAttribute("System.Web.Services", "4.8.9037.0")]
     [System.Diagnostics.DebuggerStepThroughAttribute()]
     [System.ComponentModel.DesignerCategoryAttribute("code")]
-    [System.Web.Services.WebServiceBindingAttribute(Name="WebServiceEmbarquesSoap", Namespace="http://192.168.123.4:81/WebServiceEmbarques")]
+    [System.Web.Services.WebServiceBindingAttribute(Name="WebServiceEmbarquesSoap", Namespace="http://189.206.160.206:81/WebServiceEmbarques")]
     public partial class WebServiceEmbarques : System.Web.Services.Protocols.SoapHttpClientProtocol {
         
         private System.Threading.SendOrPostCallback HelloWorldOperationCompleted;
@@ -118,7 +118,7 @@ namespace CargaEmbarques.WSCargaEmbarques189 {
         public event SendMailPersonalCompletedEventHandler SendMailPersonalCompleted;
         
         /// <remarks/>
-        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://192.168.123.4:81/WebServiceEmbarques/HelloWorld", RequestNamespace="http://192.168.123.4:81/WebServiceEmbarques", ResponseNamespace="http://192.168.123.4:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
+        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://189.206.160.206:81/WebServiceEmbarques/HelloWorld", RequestNamespace="http://189.206.160.206:81/WebServiceEmbarques", ResponseNamespace="http://189.206.160.206:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
         public string HelloWorld() {
             object[] results = this.Invoke("HelloWorld", new object[0]);
             return ((string)(results[0]));
@@ -145,7 +145,7 @@ namespace CargaEmbarques.WSCargaEmbarques189 {
         }
         
         /// <remarks/>
-        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://192.168.123.4:81/WebServiceEmbarques/EnviarPosibleDiferenciaEmbarques", RequestNamespace="http://192.168.123.4:81/WebServiceEmbarques", ResponseNamespace="http://192.168.123.4:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
+        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://189.206.160.206:81/WebServiceEmbarques/EnviarPosibleDiferenciaEmbarques", RequestNamespace="http://189.206.160.206:81/WebServiceEmbarques", ResponseNamespace="http://189.206.160.206:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
         public bool EnviarPosibleDiferenciaEmbarques(string id_embarque, string Tipo) {
             object[] results = this.Invoke("EnviarPosibleDiferenciaEmbarques", new object[] {
                         id_embarque,
@@ -176,7 +176,7 @@ namespace CargaEmbarques.WSCargaEmbarques189 {
         }
         
         /// <remarks/>
-        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://192.168.123.4:81/WebServiceEmbarques/getDestinatarios", RequestNamespace="http://192.168.123.4:81/WebServiceEmbarques", ResponseNamespace="http://192.168.123.4:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
+        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://189.206.160.206:81/WebServiceEmbarques/getDestinatarios", RequestNamespace="http://189.206.160.206:81/WebServiceEmbarques", ResponseNamespace="http://189.206.160.206:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
         public string getDestinatarios() {
             object[] results = this.Invoke("getDestinatarios", new object[0]);
             return ((string)(results[0]));
@@ -203,7 +203,7 @@ namespace CargaEmbarques.WSCargaEmbarques189 {
         }
         
         /// <remarks/>
-        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://192.168.123.4:81/WebServiceEmbarques/SendMail", RequestNamespace="http://192.168.123.4:81/WebServiceEmbarques", ResponseNamespace="http://192.168.123.4:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
+        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://189.206.160.206:81/WebServiceEmbarques/SendMail", RequestNamespace="http://189.206.160.206:81/WebServiceEmbarques", ResponseNamespace="http://189.206.160.206:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
         public void SendMail(string Dest, string mBody, string mAsunto) {
             this.Invoke("SendMail", new object[] {
                         Dest,
@@ -235,7 +235,7 @@ namespace CargaEmbarques.WSCargaEmbarques189 {
         }
         
         /// <remarks/>
-        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://192.168.123.4:81/WebServiceEmbarques/Activarboton", RequestNamespace="http://192.168.123.4:81/WebServiceEmbarques", ResponseNamespace="http://192.168.123.4:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
+        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://189.206.160.206:81/WebServiceEmbarques/Activarboton", RequestNamespace="http://189.206.160.206:81/WebServiceEmbarques", ResponseNamespace="http://189.206.160.206:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
         public string Activarboton() {
             object[] results = this.Invoke("Activarboton", new object[0]);
             return ((string)(results[0]));
@@ -262,7 +262,7 @@ namespace CargaEmbarques.WSCargaEmbarques189 {
         }
         
         /// <remarks/>
-        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://192.168.123.4:81/WebServiceEmbarques/ActivarHoraInicio", RequestNamespace="http://192.168.123.4:81/WebServiceEmbarques", ResponseNamespace="http://192.168.123.4:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
+        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://189.206.160.206:81/WebServiceEmbarques/ActivarHoraInicio", RequestNamespace="http://189.206.160.206:81/WebServiceEmbarques", ResponseNamespace="http://189.206.160.206:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
         public string ActivarHoraInicio() {
             object[] results = this.Invoke("ActivarHoraInicio", new object[0]);
             return ((string)(results[0]));
@@ -289,7 +289,7 @@ namespace CargaEmbarques.WSCargaEmbarques189 {
         }
         
         /// <remarks/>
-        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://192.168.123.4:81/WebServiceEmbarques/Version", RequestNamespace="http://192.168.123.4:81/WebServiceEmbarques", ResponseNamespace="http://192.168.123.4:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
+        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://189.206.160.206:81/WebServiceEmbarques/Version", RequestNamespace="http://189.206.160.206:81/WebServiceEmbarques", ResponseNamespace="http://189.206.160.206:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
         public string Version() {
             object[] results = this.Invoke("Version", new object[0]);
             return ((string)(results[0]));
@@ -316,7 +316,7 @@ namespace CargaEmbarques.WSCargaEmbarques189 {
         }
         
         /// <remarks/>
-        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://192.168.123.4:81/WebServiceEmbarques/VersionAguilares", RequestNamespace="http://192.168.123.4:81/WebServiceEmbarques", ResponseNamespace="http://192.168.123.4:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
+        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://189.206.160.206:81/WebServiceEmbarques/VersionAguilares", RequestNamespace="http://189.206.160.206:81/WebServiceEmbarques", ResponseNamespace="http://189.206.160.206:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
         public string VersionAguilares() {
             object[] results = this.Invoke("VersionAguilares", new object[0]);
             return ((string)(results[0]));
@@ -343,7 +343,7 @@ namespace CargaEmbarques.WSCargaEmbarques189 {
         }
         
         /// <remarks/>
-        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://192.168.123.4:81/WebServiceEmbarques/VersionUbicaciones", RequestNamespace="http://192.168.123.4:81/WebServiceEmbarques", ResponseNamespace="http://192.168.123.4:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
+        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://189.206.160.206:81/WebServiceEmbarques/VersionUbicaciones", RequestNamespace="http://189.206.160.206:81/WebServiceEmbarques", ResponseNamespace="http://189.206.160.206:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
         public string VersionUbicaciones() {
             object[] results = this.Invoke("VersionUbicaciones", new object[0]);
             return ((string)(results[0]));
@@ -370,7 +370,7 @@ namespace CargaEmbarques.WSCargaEmbarques189 {
         }
         
         /// <remarks/>
-        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://192.168.123.4:81/WebServiceEmbarques/SendMailPersonal", RequestNamespace="http://192.168.123.4:81/WebServiceEmbarques", ResponseNamespace="http://192.168.123.4:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
+        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("http://189.206.160.206:81/WebServiceEmbarques/SendMailPersonal", RequestNamespace="http://189.206.160.206:81/WebServiceEmbarques", ResponseNamespace="http://189.206.160.206:81/WebServiceEmbarques", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
         public void SendMailPersonal(string Dest, string mBody, string mAsunto, string usuario, string contraseña, string direccioncorreo) {
             this.Invoke("SendMailPersonal", new object[] {
                         Dest,
