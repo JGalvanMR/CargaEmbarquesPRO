@@ -104,6 +104,11 @@ namespace CargaEmbarques
 
         static int PICK_CONTACT_REQUEST = 1;
 
+        // FIX #3: requestCodes únicos por permiso (antes colisionaban en uno solo).
+        const int REQ_LOCATION = 100;
+        const int REQ_WRITE_STORAGE = 101;
+        const int REQ_READ_STORAGE = 102;
+
         DataTable CatProd = new DataTable();
 
         //Declarar los datos de los items en el layout CapturarSplit
@@ -2729,7 +2734,7 @@ namespace CargaEmbarques
                     Anden.Text = Info["anden"].ToString().Trim();
                     if (ordenventa == Info["EMB_FOLIO"].ToString().Trim())
                     {
-                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() != "T")
+                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() == "T")
                         {
                             AlertDialog.Builder dialog = new AlertDialog.Builder(this);
                             AlertDialog alert = dialog.Create();
@@ -3253,7 +3258,7 @@ namespace CargaEmbarques
                     Anden.Text = Info["anden"].ToString().Trim();
                     if (ordenventa == Info["EMB_FOLIO"].ToString().Trim())
                     {
-                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() != "T")
+                        if (Info["STS"].ToString().Trim() == "R" || Info["STS"].ToString().Trim() == "T")
                         {
                             AlertDialog.Builder dialog = new AlertDialog.Builder(this);
                             AlertDialog alert = dialog.Create();
@@ -7950,9 +7955,11 @@ namespace CargaEmbarques
             }
             else
             {
-                ActivityCompat.RequestPermissions(this, new System.String[] { Manifest.Permission.AccessFineLocation }, 1);
-                ActivityCompat.RequestPermissions(this, new System.String[] { Manifest.Permission.WriteExternalStorage }, 1);
-                ActivityCompat.RequestPermissions(this, new System.String[] { Manifest.Permission.ReadExternalStorage }, 1);
+                // FIX #3: requestCodes distintos por permiso. Antes los 3 usaban 1,
+                // por lo que OnRequestPermissionsResult no podía distinguir cuál se denegó.
+                ActivityCompat.RequestPermissions(this, new System.String[] { Manifest.Permission.AccessFineLocation }, REQ_LOCATION);
+                ActivityCompat.RequestPermissions(this, new System.String[] { Manifest.Permission.WriteExternalStorage }, REQ_WRITE_STORAGE);
+                ActivityCompat.RequestPermissions(this, new System.String[] { Manifest.Permission.ReadExternalStorage }, REQ_READ_STORAGE);
             }
             //Llenar_Combo();
             //AsignarAnden();
@@ -7965,6 +7972,88 @@ namespace CargaEmbarques
             //Llenar_Combo();
             //AsignarAnden();
             //Limpiar();
+        }
+        protected override void OnDestroy()
+        {
+            // FIX #2: Liberar recursos que antes quedaban enganchados hasta el GC.
+            try
+            {
+                if (Timer1 != null)
+                {
+                    Timer1.Enabled = false;
+                    Timer1.Stop();
+                    Timer1.Dispose();
+                    Timer1 = null;
+                }
+
+                if (locationManager != null)
+                {
+                    locationManager.RemoveUpdates(this);
+                }
+            }
+            catch (Java.Lang.Exception ex)
+            {
+                Android.Util.Log.Warn("CargaEmbarques", "OnDestroy cleanup: " + ex.Message);
+            }
+            finally
+            {
+                base.OnDestroy();
+            }
+        }
+
+        // FIX #3: Handler de permisos diferenciado por requestCode.
+        // Antes, los 3 permisos se pedían con requestCode=1, así que no había forma
+        // de saber cuál se había denegado. Ahora cada uno tiene su código y se
+        // reacciona de forma específica.
+        public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
+        {
+            base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+
+            bool granted = grantResults != null
+                           && grantResults.Length > 0
+                           && grantResults[0] == Permission.Granted;
+
+            switch (requestCode)
+            {
+                case REQ_LOCATION:
+                    if (granted)
+                    {
+                        try
+                        {
+                            if (locationManager != null && !string.IsNullOrEmpty(locationProvider))
+                            {
+                                locationManager.RequestLocationUpdates(locationProvider, 0, 0, this);
+                            }
+                        }
+                        catch (Java.Lang.Exception ex)
+                        {
+                            Android.Util.Log.Warn("CargaEmbarques", "RequestLocationUpdates: " + ex.Message);
+                        }
+                    }
+                    else
+                    {
+                        Toast.MakeText(this, "Sin permiso de ubicación, no se registrarán coordenadas en la captura.", ToastLength.Long).Show();
+                    }
+                    break;
+
+                case REQ_WRITE_STORAGE:
+                    if (!granted)
+                    {
+                        Toast.MakeText(this, "Sin permiso de escritura, no se podrán guardar fotos del embarque.", ToastLength.Long).Show();
+                    }
+                    break;
+
+                case REQ_READ_STORAGE:
+                    if (!granted)
+                    {
+                        Toast.MakeText(this, "Sin permiso de lectura, no se podrán revisar fotos del embarque.", ToastLength.Long).Show();
+                    }
+                    break;
+
+                default:
+                    Android.Util.Log.Warn("CargaEmbarques", "OnRequestPermissionsResult requestCode desconocido: " + requestCode);
+                    break;
+            }
         }
         protected override void OnRestart()
         {
@@ -8051,17 +8140,22 @@ namespace CargaEmbarques
 
         void ILocationListener.OnProviderDisabled(string provider)
         {
-            throw new NotImplementedException();
+            // FIX #1: No-op seguro. Antes lanzaba NotImplementedException → crash
+            // cuando el usuario apagaba el GPS a media carga.
+            Android.Util.Log.Warn("CargaEmbarques", "Location provider disabled: " + (provider ?? "(null)"));
         }
 
         void ILocationListener.OnProviderEnabled(string provider)
         {
-            throw new NotImplementedException();
+            // FIX #1: No-op seguro.
+            Android.Util.Log.Info("CargaEmbarques", "Location provider enabled: " + (provider ?? "(null)"));
         }
 
         void ILocationListener.OnStatusChanged(string provider, Availability status, Bundle extras)
         {
-            throw new NotImplementedException();
+            // FIX #1: No-op seguro. Antes lanzaba NotImplementedException → crash
+            // cuando el proveedor cambiaba de estado (p.ej. GPS → Network).
+            Android.Util.Log.Debug("CargaEmbarques", "Location provider '" + (provider ?? "(null)") + "' status=" + status);
         }
 
         #region NUEVA VALIDACION DE ETIQUETAS VERDES
