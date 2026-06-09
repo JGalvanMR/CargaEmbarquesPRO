@@ -104,6 +104,11 @@ namespace CargaEmbarques
 
         static int PICK_CONTACT_REQUEST = 1;
 
+        // FIX #3: requestCodes únicos por permiso (antes colisionaban en uno solo).
+        const int REQ_LOCATION = 100;
+        const int REQ_WRITE_STORAGE = 101;
+        const int REQ_READ_STORAGE = 102;
+
         DataTable CatProd = new DataTable();
 
         //Declarar los datos de los items en el layout CapturarSplit
@@ -6843,276 +6848,272 @@ namespace CargaEmbarques
                             break;
                     }
 
-                    MostrarDialogoObservacionesSiAplica(orden, (observacionExtra) =>
+                    if (thisConnection.State == ConnectionState.Closed)
                     {
-                        if (thisConnection.State == ConnectionState.Closed) { thisConnection.Open(); }
-                        cadena = "Select DISTINCT PROD_CLAVE,CANT_PED,CANT_SUR,NOM_PROD from tb_ped_embarque Where emb_folio='" + orden + "' and NALEXP = '" + TipoPed + "' order by NOM_PROD";
-                        SqlCommand cmd = new SqlCommand(cadena);
+                        thisConnection.Open();
+                    }
+                    cadena = "Select DISTINCT PROD_CLAVE,CANT_PED,CANT_SUR,NOM_PROD from tb_ped_embarque Where emb_folio='" + orden + "' and NALEXP = '" + TipoPed + "' order by NOM_PROD";
+                    SqlCommand cmd = new SqlCommand(cadena);
 
-                        SqlDataReader Info;
-                        cmd.Connection = thisConnection;
-                        Info = cmd.ExecuteReader();
-                        Errores = "";
-                        while (Info.Read())
+                    SqlDataReader Info;
+                    cmd.Connection = thisConnection;
+                    Info = cmd.ExecuteReader();
+                    Errores = "";
+                    while (Info.Read())
+                    {
+                        if (Convert.ToInt32(Info["CANT_PED"].ToString().Trim()) != Convert.ToInt32(Info["CANT_SUR"].ToString().Trim()))
                         {
-                            if (Convert.ToInt32(Info["CANT_PED"].ToString().Trim()) != Convert.ToInt32(Info["CANT_SUR"].ToString().Trim()))
-                            {
-                                Errores = Errores + Info["CANT_PED"].ToString().Trim() + "   ," + Info["CANT_SUR"].ToString().Trim() + "   ," + Info["NOM_PROD"].ToString().Trim();
-                            }
+                            Errores = Errores + Info["CANT_PED"].ToString().Trim() + "   ," + Info["CANT_SUR"].ToString().Trim() + "   ," + Info["NOM_PROD"].ToString().Trim();
                         }
-                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+                    }
+                    if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
 
-                        string observaciones = "";
-                        string correo = "";
+                    string observaciones = "";
+                    string correo = "";
 
-                        if (Errores.Trim().Length > 0)
+                    if (Errores.Trim().Length > 0)
+                    {
+
+                        et = new EditText(this);
+                        et.InputType = Android.Text.InputTypes.TextVariationNormal | Android.Text.InputTypes.TextFlagImeMultiLine;
+                        et.LongClickable = false;
+                        et.Text = observaciones;
+                        AlertDialog.Builder ad = new AlertDialog.Builder(this);
+                        ad.SetTitle("Observaciones Orden con Diferencia");
+                        ad.SetCancelable(false);
+                        ad.SetView(et);
+                        ad.SetPositiveButton(Html.FromHtml("<font face = 'Comic Sans MS, arial' color='#DF0101' size = '10'>Guardar</font>"), (senderdiferencia, argsdiferencia) =>
                         {
-
-                            et = new EditText(this);
-                            et.InputType = Android.Text.InputTypes.TextVariationNormal | Android.Text.InputTypes.TextFlagImeMultiLine;
-                            et.LongClickable = false;
-                            et.Text = observaciones;
-
-                            #region OBSERVACIONES ORDEN CON DIFERENCIA
-                            AlertDialog.Builder ad = new AlertDialog.Builder(this);
-                            ad.SetTitle("Observaciones Orden con Diferencia");
-                            ad.SetCancelable(false);
-                            ad.SetView(et);
-                            ad.SetPositiveButton(Html.FromHtml("<font face = 'Comic Sans MS, arial' color='#DF0101' size = '10'>Guardar</font>"), (senderdiferencia, argsdiferencia) =>
+                            observaciones = et.Text;
+                            if (correo == "")
                             {
-                                observaciones = et.Text;
-                                string obsFinal = (string.IsNullOrEmpty(observacionExtra) ? "" : observacionExtra + ". ") + observaciones;
-                                if (correo == "")
-                                {
-                                    Toast.MakeText(this, "Favor de Notificar Posible Diferencia de Embarques Antes de Guardar el embarque", ToastLength.Long).Show();
-                                }
-                                else
-                                {
-                                    if (observaciones.Length < 10)
-                                    {
-                                        Toast.MakeText(this, "No se ha capturado la Observación", ToastLength.Long).Show();
-                                        et.RequestFocus();
-                                    }
-                                    else
-                                    {
-                                        int splitpendientes = 0;
-                                        if (thisConnection.State == ConnectionState.Closed)
-                                        {
-                                            thisConnection.Open();
-                                        }
-                                        cadena = "select COUNT(cajas) as total from tb_det_split Where emb_folio = '" + pedido.Text + "' And estatus = 'A'";
-                                        cmd = new SqlCommand(cadena);
-                                        cmd.Connection = thisConnection;
-                                        Info = cmd.ExecuteReader();
-                                        Errores = "";
-                                        while (Info.Read())
-                                        {
-                                            splitpendientes = Convert.ToInt32(Info["total"].ToString().Trim());
-                                        }
-                                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                        if (splitpendientes > 0)
-                                        {
-                                            Toast.MakeText(this, "El pedido actual No puede ser cerrado, debido a que tiene Split Pendientes por Cargar", ToastLength.Long).Show();
-                                            return;
-                                        }
-
-                                        if (thisConnection.State == ConnectionState.Closed)
-                                        {
-                                            thisConnection.Open();
-                                        }
-                                        cadena = "select ISNULL(sum(cajas),0) as total from tb_det_embarque Where emb_folio = '" + pedido.Text + "'";
-                                        cmd = new SqlCommand(cadena, thisConnection);
-                                        V_Cajas = Convert.ToInt32(cmd.ExecuteScalar());
-
-                                        cadena = "UPDATE tb_mstr_embarque SET  hora_fin = '" + DateTime.Now.ToString("hh:mm tt").Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "', cajas = '" + V_Cajas + "', sts = 'T', EMB_obs = '" + obsFinal + "' WHERE emb_folio = '" + pedido.Text + "' ";
-                                        cmd = new SqlCommand(cadena, thisConnection);
-                                        cmd.ExecuteNonQuery();
-
-                                        if (TipoPed == "EXP")
-                                        {
-                                            cadena = "UPDATE tb_mstr_pedidos_exp SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
-                                        }
-                                        else
-                                        {
-                                            cadena = "UPDATE tb_mstr_pedidos_nal SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
-                                        }
-                                        cmd = new SqlCommand(cadena, thisConnection);
-                                        cmd.ExecuteNonQuery();
-
-                                        cadena = "UPDATE tb_det_acceso_celulares SET estado = 'T' WHERE estado = 'A' AND sistema = 'CargaEmbarques' AND folio ='" + pedido.Text.Trim() + "'";
-                                        cmd = new SqlCommand(cadena, thisConnection);
-                                        cmd.ExecuteNonQuery();
-                                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                    }
-                                }
-                                ad.Dispose();
-                                Limpiar();
-                            });
-                            ad.SetNegativeButton(Html.FromHtml("<font face = 'Comic Sans MS, arial' color='#DF0101' size = '10'>Cancelar</font>"), (senderdiferencia, argsdiferencia) =>
+                                Toast.MakeText(this, "Favor de Notificar Posible Diferencia de Embarques Antes de Guardar el embarque", ToastLength.Long).Show();
+                            }
+                            else
                             {
-                                return;
-                            });
-                            ad.SetNeutralButton(Html.FromHtml("<font face = 'Comic Sans MS, arial' color='#DF0101' size = '10'>Notificar</font>"), (senderdiferencia, argsdiferencia) =>
-                            {
-                                observaciones = et.Text;
                                 if (observaciones.Length < 10)
                                 {
                                     Toast.MakeText(this, "No se ha capturado la Observación", ToastLength.Long).Show();
                                     et.RequestFocus();
                                 }
-
-                                switch (lugar.Text.Trim())
+                                else
                                 {
-                                    case "Nacional":
-                                        TipoPed = "NAL"; ;
-                                        break;
-                                    case "Exportación":
-                                        TipoPed = "EXP"; ;
-                                        break;
-                                    case "Maquila":
-                                        TipoPed = "TRA"; ;
-                                        break;
-                                }
-
-                                int minutos = 0;
-                                if (thisConnection.State == ConnectionState.Closed)
-                                {
-                                    thisConnection.Open();
-                                }
-                                cadena = "IF EXISTS(SELECT emb_folio FROM tb_mstr_embarque WHERE emb_folio = '" + pedido.Text + "' AND EMB_obs != '') Select ISNULL(datediff (mi, (Select horaenvcorreo FROM tb_mstr_embarque WHERE  emb_folio = '" + pedido.Text + "'), GETDATE() ), 15) ELSE SELECT '15'";
-                                cmd = new SqlCommand(cadena, thisConnection);
-                                minutos = Convert.ToInt32(cmd.ExecuteScalar());
-                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-
-                                if (minutos > 14)
-                                {
+                                    int splitpendientes = 0;
+                                    if (thisConnection.State == ConnectionState.Closed)
+                                    {
+                                        thisConnection.Open();
+                                    }
+                                    cadena = "select COUNT(cajas) as total from tb_det_split Where emb_folio = '" + pedido.Text + "' And estatus = 'A'";
+                                    cmd = new SqlCommand(cadena);
+                                    cmd.Connection = thisConnection;
+                                    Info = cmd.ExecuteReader();
+                                    Errores = "";
+                                    while (Info.Read())
+                                    {
+                                        splitpendientes = Convert.ToInt32(Info["total"].ToString().Trim());
+                                    }
+                                    if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+                                    if (splitpendientes > 0)
+                                    {
+                                        Toast.MakeText(this, "El pedido actual No puede ser cerrado, debido a que tiene Split Pendientes por Cargar", ToastLength.Long).Show();
+                                        return;
+                                    }
 
                                     if (thisConnection.State == ConnectionState.Closed)
                                     {
                                         thisConnection.Open();
                                     }
-                                    string obsFinal = (string.IsNullOrEmpty(observacionExtra) ? "" : observacionExtra + ". ") + observaciones;
-                                    cadena = "UPDATE tb_mstr_embarque SET  EMB_obs = '" + obsFinal + "', horaenvcorreo = GETDATE() WHERE emb_folio = '" + pedido.Text + "' ";
+                                    cadena = "select ISNULL(sum(cajas),0) as total from tb_det_embarque Where emb_folio = '" + pedido.Text + "'";
                                     cmd = new SqlCommand(cadena, thisConnection);
-                                    minutos = Convert.ToInt32(cmd.ExecuteScalar());
-                                    if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+                                    V_Cajas = Convert.ToInt32(cmd.ExecuteScalar());
 
-                                    //var proxy = new WebServiceEmbarques.WebServiceEmbarques();
-                                    //var proxy = new WSEmbarques.WebServiceEmbarques();
+                                    cadena = "UPDATE tb_mstr_embarque SET  hora_fin = '" + DateTime.Now.ToString("hh:mm tt").Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "', cajas = '" + V_Cajas + "', sts = 'T', EMB_obs = '" + observaciones + "' WHERE emb_folio = '" + pedido.Text + "' ";
+                                    cmd = new SqlCommand(cadena, thisConnection);
+                                    cmd.ExecuteNonQuery();
 
-                                    if (INFO_FILE == "http://192.168.123.4:81/EmbarquesApk/estado_respaldo.txt")
+                                    if (TipoPed == "EXP")
                                     {
-                                        proxyLocal.EnviarPosibleDiferenciaEmbarques(pedido.Text.Trim(), TipoPed);
+                                        cadena = "UPDATE tb_mstr_pedidos_exp SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
                                     }
                                     else
                                     {
-                                        proxy.EnviarPosibleDiferenciaEmbarques(pedido.Text.Trim(), TipoPed);
+                                        cadena = "UPDATE tb_mstr_pedidos_nal SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
                                     }
-                                    //var proxy = new WSCargaEmbarques189.WebServiceEmbarques();
-                                    //proxy.EnviarPosibleDiferenciaEmbarques(pedido.Text.Trim(), TipoPed);
-                                    Toast.MakeText(this, "POSIBLE DIFERENCIA DE EMBARQUES ENVIADA CORRECTAMENTE", ToastLength.Long).Show();
+                                    cmd = new SqlCommand(cadena, thisConnection);
+                                    cmd.ExecuteNonQuery();
 
+                                    cadena = "UPDATE tb_det_acceso_celulares SET estado = 'T' WHERE estado = 'A' AND sistema = 'CargaEmbarques' AND folio ='" + pedido.Text.Trim() + "'";
+                                    cmd = new SqlCommand(cadena, thisConnection);
+                                    cmd.ExecuteNonQuery();
+                                    if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
                                 }
-                                else
-                                {
-                                    Toast.MakeText(this, "Debe pasar un intervalo de 15 minutos Para volver a enviar el correo de Posible Diferencia de Embarques", ToastLength.Long).Show();
-                                }
-                            });
-                            #endregion
-                            #region GUARDAR EMBARQUE CON DIFERENCIA
-                            Android.App.AlertDialog.Builder dialogdiferencia = new Android.App.AlertDialog.Builder(this);
-                            dialogdiferencia.SetTitle(Html.FromHtml("<font color='#DF0101' size = 10>GUARDAR EMBARQUE CON DIFERENCIA</font>"));
-                            dialogdiferencia.SetIcon(Resource.Drawable.Info);
-                            dialogdiferencia.SetCancelable(false);
-                            dialogdiferencia.SetMessage(Html.FromHtml("<font color='#000000' size = 10>¿Hay Diferencias en el Embarque desea Guardarlo?</font>"));
-                            dialogdiferencia.SetPositiveButton("Continuar", (senderdiferencia, argsdiferencia) =>
-                            {
-                                if (thisConnection.State == ConnectionState.Closed)
-                                {
-                                    thisConnection.Open();
-                                }
-                                cadena = "Select EMB_obs, horaenvcorreo FROM tb_mstr_embarque WHERE  emb_folio = '" + pedido.Text + "'";
-                                cmd = new SqlCommand(cadena);
-                                cmd.Connection = thisConnection;
-                                Info = cmd.ExecuteReader();
-                                Errores = "";
-                                while (Info.Read())
-                                {
-                                    observaciones = observaciones + Info["EMB_obs"].ToString().Trim();
-                                    correo = Info["horaenvcorreo"].ToString().Trim();
-                                }
-                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                                dialogdiferencia.Dispose();
-                                ad.Show();
-
-
-                            });
-                            dialogdiferencia.SetNegativeButton("Cancelar", (senderdiferencia, argsdiferencia) =>
-                            {
-                                dialogdiferencia.Dispose();
-                                return;
-                            });
-                            dialogdiferencia.Show();
-                            #endregion
-                        }
-                        else
+                            }
+                            ad.Dispose();
+                            Limpiar();
+                        });
+                        ad.SetNegativeButton(Html.FromHtml("<font face = 'Comic Sans MS, arial' color='#DF0101' size = '10'>Cancelar</font>"), (senderdiferencia, argsdiferencia) =>
                         {
-                            int splitpendientes = 0;
+                            return;
+                        });
+
+
+                        ad.SetNeutralButton(Html.FromHtml("<font face = 'Comic Sans MS, arial' color='#DF0101' size = '10'>Notificar</font>"), (senderdiferencia, argsdiferencia) =>
+                        {
+                            observaciones = et.Text;
+                            if (observaciones.Length < 10)
+                            {
+                                Toast.MakeText(this, "No se ha capturado la Observación", ToastLength.Long).Show();
+                                et.RequestFocus();
+                            }
+
+                            switch (lugar.Text.Trim())
+                            {
+                                case "Nacional":
+                                    TipoPed = "NAL"; ;
+                                    break;
+                                case "Exportación":
+                                    TipoPed = "EXP"; ;
+                                    break;
+                                case "Maquila":
+                                    TipoPed = "TRA"; ;
+                                    break;
+                            }
+
+                            int minutos = 0;
                             if (thisConnection.State == ConnectionState.Closed)
                             {
                                 thisConnection.Open();
                             }
-                            cadena = "select COUNT(cajas) as total from tb_det_split Where emb_folio = '" + pedido.Text + "' And estatus = 'A'";
+                            cadena = "IF EXISTS(SELECT emb_folio FROM tb_mstr_embarque WHERE emb_folio = '" + pedido.Text + "' AND EMB_obs != '') Select ISNULL(datediff (mi, (Select horaenvcorreo FROM tb_mstr_embarque WHERE  emb_folio = '" + pedido.Text + "'), GETDATE() ), 15) ELSE SELECT '15'";
+                            cmd = new SqlCommand(cadena, thisConnection);
+                            minutos = Convert.ToInt32(cmd.ExecuteScalar());
+                            if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                            if (minutos > 14)
+                            {
+
+                                if (thisConnection.State == ConnectionState.Closed)
+                                {
+                                    thisConnection.Open();
+                                }
+                                cadena = "UPDATE tb_mstr_embarque SET  EMB_obs = '" + observaciones + "', horaenvcorreo = GETDATE() WHERE emb_folio = '" + pedido.Text + "' ";
+                                cmd = new SqlCommand(cadena, thisConnection);
+                                minutos = Convert.ToInt32(cmd.ExecuteScalar());
+                                if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+
+                                //var proxy = new WebServiceEmbarques.WebServiceEmbarques();
+                                //var proxy = new WSEmbarques.WebServiceEmbarques();
+
+                                if (INFO_FILE == "http://192.168.123.4:81/EmbarquesApk/estado_respaldo.txt")
+                                {
+                                    proxyLocal.EnviarPosibleDiferenciaEmbarques(pedido.Text.Trim(), TipoPed);
+                                }
+                                else
+                                {
+                                    proxy.EnviarPosibleDiferenciaEmbarques(pedido.Text.Trim(), TipoPed);
+                                }
+                                //var proxy = new WSCargaEmbarques189.WebServiceEmbarques();
+                                //proxy.EnviarPosibleDiferenciaEmbarques(pedido.Text.Trim(), TipoPed);
+                                Toast.MakeText(this, "POSIBLE DIFERENCIA DE EMBARQUES ENVIADA CORRECTAMENTE", ToastLength.Long).Show();
+
+                            }
+                            else
+                            {
+                                Toast.MakeText(this, "Debe pasar un intervalo de 15 minutos Para volver a enviar el correo de Posible Diferencia de Embarques", ToastLength.Long).Show();
+                            }
+                        });
+
+
+
+
+
+                        Android.App.AlertDialog.Builder dialogdiferencia = new Android.App.AlertDialog.Builder(this);
+                        dialogdiferencia.SetTitle(Html.FromHtml("<font color='#DF0101' size = 10>GUARDAR EMBARQUE CON DIFERENCIA</font>"));
+                        dialogdiferencia.SetIcon(Resource.Drawable.Info);
+                        dialogdiferencia.SetCancelable(false);
+                        dialogdiferencia.SetMessage(Html.FromHtml("<font color='#000000' size = 10>¿Hay Diferencias en el Embarque desea Guardarlo?</font>"));
+                        dialogdiferencia.SetPositiveButton("Continuar", (senderdiferencia, argsdiferencia) =>
+                        {
+                            if (thisConnection.State == ConnectionState.Closed)
+                            {
+                                thisConnection.Open();
+                            }
+                            cadena = "Select EMB_obs, horaenvcorreo FROM tb_mstr_embarque WHERE  emb_folio = '" + pedido.Text + "'";
                             cmd = new SqlCommand(cadena);
                             cmd.Connection = thisConnection;
                             Info = cmd.ExecuteReader();
                             Errores = "";
                             while (Info.Read())
                             {
-                                splitpendientes = Convert.ToInt32(Info["total"].ToString().Trim());
+                                observaciones = observaciones + Info["EMB_obs"].ToString().Trim();
+                                correo = Info["horaenvcorreo"].ToString().Trim();
                             }
                             if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                            if (splitpendientes > 0)
-                            {
-                                Toast.MakeText(this, "El pedido actual No puede ser cerrado, debido a que tiene Split Pendientes por Cargar", ToastLength.Long).Show();
-                                return;
-                            }
+                            dialogdiferencia.Dispose();
+                            ad.Show();
 
-                            if (thisConnection.State == ConnectionState.Closed)
-                            {
-                                thisConnection.Open();
-                            }
-                            cadena = "select sum(cajas) as total from tb_det_embarque Where emb_folio = '" + pedido.Text + "'";
-                            cmd = new SqlCommand(cadena, thisConnection);
-                            V_Cajas = Convert.ToInt32(cmd.ExecuteScalar());
 
-                            string obsFinal = (string.IsNullOrEmpty(observacionExtra) ? "" : observacionExtra + ". ") + observaciones;
-
-                            cadena = "UPDATE tb_mstr_embarque SET  hora_fin = '" + DateTime.Now.ToString("hh:mm tt").Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "', cajas = '" + V_Cajas + "', sts = 'T', EMB_obs = '" + obsFinal + "' WHERE emb_folio = '" + pedido.Text + "' ";
-                            cmd = new SqlCommand(cadena, thisConnection);
-                            cmd.ExecuteNonQuery();
-
-                            if (TipoPed == "EXP")
-                            {
-                                cadena = "UPDATE tb_mstr_pedidos_exp SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
-                            }
-                            else
-                            {
-                                cadena = "UPDATE tb_mstr_pedidos_nal SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
-                            }
-                            cmd = new SqlCommand(cadena, thisConnection);
-                            cmd.ExecuteNonQuery();
-
-                            cadena = "UPDATE tb_det_acceso_celulares SET estado = 'T' WHERE estado = 'A' AND sistema = 'SplitTrailer' AND folio ='" + pedido.Text.Trim() + "'";
-                            cmd = new SqlCommand(cadena, thisConnection);
-                            cmd.ExecuteNonQuery();
-                            if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                            Limpiar();
-
+                        });
+                        dialogdiferencia.SetNegativeButton("Cancelar", (senderdiferencia, argsdiferencia) =>
+                        {
+                            dialogdiferencia.Dispose();
+                            return;
+                        });
+                        dialogdiferencia.Show();
+                    }
+                    else
+                    {
+                        int splitpendientes = 0;
+                        if (thisConnection.State == ConnectionState.Closed)
+                        {
+                            thisConnection.Open();
                         }
-                    });
+                        cadena = "select COUNT(cajas) as total from tb_det_split Where emb_folio = '" + pedido.Text + "' And estatus = 'A'";
+                        cmd = new SqlCommand(cadena);
+                        cmd.Connection = thisConnection;
+                        Info = cmd.ExecuteReader();
+                        Errores = "";
+                        while (Info.Read())
+                        {
+                            splitpendientes = Convert.ToInt32(Info["total"].ToString().Trim());
+                        }
+                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+                        if (splitpendientes > 0)
+                        {
+                            Toast.MakeText(this, "El pedido actual No puede ser cerrado, debido a que tiene Split Pendientes por Cargar", ToastLength.Long).Show();
+                            return;
+                        }
 
+                        if (thisConnection.State == ConnectionState.Closed)
+                        {
+                            thisConnection.Open();
+                        }
+                        cadena = "select sum(cajas) as total from tb_det_embarque Where emb_folio = '" + pedido.Text + "'";
+                        cmd = new SqlCommand(cadena, thisConnection);
+                        V_Cajas = Convert.ToInt32(cmd.ExecuteScalar());
 
+                        cadena = "UPDATE tb_mstr_embarque SET  hora_fin = '" + DateTime.Now.ToString("hh:mm tt").Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "', cajas = '" + V_Cajas + "', sts = 'T', EMB_obs = '" + observaciones + "' WHERE emb_folio = '" + pedido.Text + "' ";
+                        cmd = new SqlCommand(cadena, thisConnection);
+                        cmd.ExecuteNonQuery();
+
+                        if (TipoPed == "EXP")
+                        {
+                            cadena = "UPDATE tb_mstr_pedidos_exp SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
+                        }
+                        else
+                        {
+                            cadena = "UPDATE tb_mstr_pedidos_nal SET  pdn_surtido = 'S' WHERE pdn_folio = '" + pedido.Text.Trim() + "'";
+                        }
+                        cmd = new SqlCommand(cadena, thisConnection);
+                        cmd.ExecuteNonQuery();
+
+                        cadena = "UPDATE tb_det_acceso_celulares SET estado = 'T' WHERE estado = 'A' AND sistema = 'SplitTrailer' AND folio ='" + pedido.Text.Trim() + "'";
+                        cmd = new SqlCommand(cadena, thisConnection);
+                        cmd.ExecuteNonQuery();
+                        if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
+                        Limpiar();
+
+                    }
 
                 });
 
@@ -7950,9 +7951,11 @@ namespace CargaEmbarques
             }
             else
             {
-                ActivityCompat.RequestPermissions(this, new System.String[] { Manifest.Permission.AccessFineLocation }, 1);
-                ActivityCompat.RequestPermissions(this, new System.String[] { Manifest.Permission.WriteExternalStorage }, 1);
-                ActivityCompat.RequestPermissions(this, new System.String[] { Manifest.Permission.ReadExternalStorage }, 1);
+                // FIX #3: requestCodes distintos por permiso. Antes los 3 usaban 1,
+                // por lo que OnRequestPermissionsResult no podía distinguir cuál se denegó.
+                ActivityCompat.RequestPermissions(this, new System.String[] { Manifest.Permission.AccessFineLocation }, REQ_LOCATION);
+                ActivityCompat.RequestPermissions(this, new System.String[] { Manifest.Permission.WriteExternalStorage }, REQ_WRITE_STORAGE);
+                ActivityCompat.RequestPermissions(this, new System.String[] { Manifest.Permission.ReadExternalStorage }, REQ_READ_STORAGE);
             }
             //Llenar_Combo();
             //AsignarAnden();
@@ -7965,6 +7968,88 @@ namespace CargaEmbarques
             //Llenar_Combo();
             //AsignarAnden();
             //Limpiar();
+        }
+        protected override void OnDestroy()
+        {
+            // FIX #2: Liberar recursos que antes quedaban enganchados hasta el GC.
+            try
+            {
+                if (Timer1 != null)
+                {
+                    Timer1.Enabled = false;
+                    Timer1.Stop();
+                    Timer1.Dispose();
+                    Timer1 = null;
+                }
+
+                if (locationManager != null)
+                {
+                    locationManager.RemoveUpdates(this);
+                }
+            }
+            catch (Java.Lang.Exception ex)
+            {
+                Android.Util.Log.Warn("CargaEmbarques", "OnDestroy cleanup: " + ex.Message);
+            }
+            finally
+            {
+                base.OnDestroy();
+            }
+        }
+
+        // FIX #3: Handler de permisos diferenciado por requestCode.
+        // Antes, los 3 permisos se pedían con requestCode=1, así que no había forma
+        // de saber cuál se había denegado. Ahora cada uno tiene su código y se
+        // reacciona de forma específica.
+        public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
+        {
+            base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+
+            bool granted = grantResults != null
+                           && grantResults.Length > 0
+                           && grantResults[0] == Permission.Granted;
+
+            switch (requestCode)
+            {
+                case REQ_LOCATION:
+                    if (granted)
+                    {
+                        try
+                        {
+                            if (locationManager != null && !string.IsNullOrEmpty(locationProvider))
+                            {
+                                locationManager.RequestLocationUpdates(locationProvider, 0, 0, this);
+                            }
+                        }
+                        catch (Java.Lang.Exception ex)
+                        {
+                            Android.Util.Log.Warn("CargaEmbarques", "RequestLocationUpdates: " + ex.Message);
+                        }
+                    }
+                    else
+                    {
+                        Toast.MakeText(this, "Sin permiso de ubicación, no se registrarán coordenadas en la captura.", ToastLength.Long).Show();
+                    }
+                    break;
+
+                case REQ_WRITE_STORAGE:
+                    if (!granted)
+                    {
+                        Toast.MakeText(this, "Sin permiso de escritura, no se podrán guardar fotos del embarque.", ToastLength.Long).Show();
+                    }
+                    break;
+
+                case REQ_READ_STORAGE:
+                    if (!granted)
+                    {
+                        Toast.MakeText(this, "Sin permiso de lectura, no se podrán revisar fotos del embarque.", ToastLength.Long).Show();
+                    }
+                    break;
+
+                default:
+                    Android.Util.Log.Warn("CargaEmbarques", "OnRequestPermissionsResult requestCode desconocido: " + requestCode);
+                    break;
+            }
         }
         protected override void OnRestart()
         {
@@ -8051,17 +8136,22 @@ namespace CargaEmbarques
 
         void ILocationListener.OnProviderDisabled(string provider)
         {
-            throw new NotImplementedException();
+            // FIX #1: No-op seguro. Antes lanzaba NotImplementedException → crash
+            // cuando el usuario apagaba el GPS a media carga.
+            Android.Util.Log.Warn("CargaEmbarques", "Location provider disabled: " + (provider ?? "(null)"));
         }
 
         void ILocationListener.OnProviderEnabled(string provider)
         {
-            throw new NotImplementedException();
+            // FIX #1: No-op seguro.
+            Android.Util.Log.Info("CargaEmbarques", "Location provider enabled: " + (provider ?? "(null)"));
         }
 
         void ILocationListener.OnStatusChanged(string provider, Availability status, Bundle extras)
         {
-            throw new NotImplementedException();
+            // FIX #1: No-op seguro. Antes lanzaba NotImplementedException → crash
+            // cuando el proveedor cambiaba de estado (p.ej. GPS → Network).
+            Android.Util.Log.Debug("CargaEmbarques", "Location provider '" + (provider ?? "(null)") + "' status=" + status);
         }
 
         #region NUEVA VALIDACION DE ETIQUETAS VERDES
@@ -8916,10 +9006,6 @@ ORDER BY t.fecha DESC";
 
 
         #region ATU
-
-
-
-
         #region ATU Legacy Password Dialog
         private void MostrarDialogoPasswordLegacy(
             string motivo,

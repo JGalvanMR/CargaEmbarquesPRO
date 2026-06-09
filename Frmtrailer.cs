@@ -481,7 +481,7 @@ namespace CargaEmbarques
             }
         }
 
-        private void Grabar_Click(object sender, EventArgs e)
+        private void Grabar_ClickLEGACY(object sender, EventArgs e)
         {
 
             WifiManager wifi = (WifiManager)Android.App.Application.Context.GetSystemService(Context.WifiService);
@@ -531,7 +531,7 @@ namespace CargaEmbarques
             SqlCommand cmd;
             SqlDataReader Info;
 
-            string szSQL, mFEC, MHI, MF;
+            string szSQL, mFEC, MF;
             System.String[] strTrailerx;
             System.Collections.ArrayList listadetrailer = new System.Collections.ArrayList();
 
@@ -718,22 +718,81 @@ namespace CargaEmbarques
                     }
                 }
 
-                mFEC = Convert.ToString(HoraFinal.Text);
-                szSQL = "UPDATE tb_mstr_trailer SET TEMPFIN = '" + temperaturaFinal.Text + "', HORAFIN = '" + mFEC.Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "', GUARDAR = 'S' WHERE NO_TRAILER = '" + txtNo_trailer.Text + "' AND HORA_TRAILER = '" + txtfecha.Text + "'";
-                thisConnection.Open();
-                cmd = new SqlCommand(szSQL, thisConnection);
-                cmd.ExecuteNonQuery();
-                thisConnection.Close();
-                Toast.MakeText(this, "DATOS GRABADOS CON EXITO", ToastLength.Long).Show();
+                // *** INTEGRACIÓN DEL DIÁLOGO DE OBSERVACIONES ***
+                // Se llama al método pasando el folio del embarque (folio_pedido) y un callback que realizará el cierre.
+                MostrarDialogoObservacionesSiAplica(folio_pedido, (observacionSeleccionada) =>
+                {
+                    // Este código se ejecutará cuando:
+                    // - No aplican condiciones (observacionSeleccionada = "") o
+                    // - El usuario seleccionó una observación y aceptó.
+                    mFEC = Convert.ToString(HoraFinal.Text);
+                    string sqlUpdate;
+                    if (string.IsNullOrEmpty(observacionSeleccionada))
+                    {
+                        sqlUpdate = "UPDATE tb_mstr_trailer SET TEMPFIN = @tempFin, HORAFIN = @horaFin, GUARDAR = 'S' WHERE NO_TRAILER = @noTrailer AND HORA_TRAILER = @horaTrailer";
+                    }
+                    else
+                    {
+                        sqlUpdate = "UPDATE tb_mstr_trailer SET TEMPFIN = @tempFin, HORAFIN = @horaFin, GUARDAR = 'S', obs = @obs WHERE NO_TRAILER = @noTrailer AND HORA_TRAILER = @horaTrailer";
+                    }
+
+                    using (SqlCommand cmdUpdate = new SqlCommand(sqlUpdate, thisConnection))
+                    {
+                        cmdUpdate.Parameters.AddWithValue("@tempFin", temperaturaFinal.Text);
+                        cmdUpdate.Parameters.AddWithValue("@horaFin", mFEC.Replace("a. m.", "a.m.").Replace("p. m.", "p.m."));
+                        cmdUpdate.Parameters.AddWithValue("@noTrailer", txtNo_trailer.Text);
+                        cmdUpdate.Parameters.AddWithValue("@horaTrailer", txtfecha.Text);
+                        if (!string.IsNullOrEmpty(observacionSeleccionada))
+                            cmdUpdate.Parameters.AddWithValue("@obs", observacionSeleccionada);
+
+                        thisConnection.Open();
+                        cmdUpdate.ExecuteNonQuery();
+                        thisConnection.Close();
+                    }
+
+                    Toast.MakeText(this, "DATOS GRABADOS CON EXITO", ToastLength.Long).Show();
+
+                    // Actualizar la lista de trailers en el Spinner (código original)
+                    thisConnection.Open();
+                    string Cadena = "Select Count(NO_TRAILER) From tb_mstr_trailer Where guardar = 'N'  AND Anden = '" + AndenValidar + "'";
+                    SqlCommand cmdx = new SqlCommand(Cadena, thisConnection);
+                    string valor = Convert.ToString(cmdx.ExecuteScalar());
+                    strTrailerx = new System.String[Convert.ToInt32(valor) + 1];
+                    strTrailerx[0] = "";
+                    thisConnection.Close();
+                    int x = 1;
+                    thisConnection.Open();
+                    cadena = "Select NO_TRAILER From tb_mstr_trailer Where guardar = 'N' AND Anden = '" + AndenValidar + "' order by NO_TRAILER";
+                    cmd = new SqlCommand(cadena);
+                    cmd.Connection = thisConnection;
+                    Info = cmd.ExecuteReader();
+                    while (Info.Read())
+                    {
+                        strTrailerx[x] = Info["NO_TRAILER"].ToString().Trim();
+                        x++;
+                    }
+                    thisConnection.Close();
+                    Collections.AddAll(listadetrailer, strTrailerx);
+                    numtrail.Adapter = null;
+                    comboAdapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleSpinnerItem, strTrailerx);
+                    numtrail.Adapter = comboAdapter;
+                    numtrail.ItemSelected += new EventHandler<AdapterView.ItemSelectedEventArgs>(spinner_Trailer);
+                    if (AndenValidar != "99")
+                    {
+                        Nuevo();
+                    }
+                    cargarInfoTrailer();
+                });
+                return; // Importante: salir del evento para no ejecutar el código antiguo
             }
             thisConnection.Open();
-            string Cadena = "Select Count(NO_TRAILER) From tb_mstr_trailer Where guardar = 'N'  AND Anden = '" + AndenValidar + "'";
-            SqlCommand cmdx = new SqlCommand(Cadena, thisConnection);
-            string valor = Convert.ToString(cmdx.ExecuteScalar());
-            strTrailerx = new System.String[Convert.ToInt32(valor) + 1];
+            string Cadena2 = "Select Count(NO_TRAILER) From tb_mstr_trailer Where guardar = 'N'  AND Anden = '" + AndenValidar + "'";
+            SqlCommand cmdx2 = new SqlCommand(Cadena2, thisConnection);
+            string valor2 = Convert.ToString(cmdx2.ExecuteScalar());
+            strTrailerx = new System.String[Convert.ToInt32(valor2) + 1];
             strTrailerx[0] = "";
             thisConnection.Close();
-            int x = 1;
+            int x2 = 1;
             thisConnection.Open();
             cadena = "Select NO_TRAILER From tb_mstr_trailer Where guardar = 'N' AND Anden = '" + AndenValidar + "' order by NO_TRAILER";
             cmd = new SqlCommand(cadena);
@@ -741,8 +800,8 @@ namespace CargaEmbarques
             Info = cmd.ExecuteReader();
             while (Info.Read())
             {
-                strTrailerx[x] = Info["NO_TRAILER"].ToString().Trim();
-                x++;
+                strTrailerx[x2] = Info["NO_TRAILER"].ToString().Trim();
+                x2++;
             }
             thisConnection.Close();
             Collections.AddAll(listadetrailer, strTrailerx);
@@ -755,6 +814,340 @@ namespace CargaEmbarques
                 Nuevo();
             }
             //Nuevo();
+            cargarInfoTrailer();
+        }
+
+        private void Grabar_Click(object sender, EventArgs e)
+        {
+            WifiManager wifi = (WifiManager)Android.App.Application.Context.GetSystemService(Context.WifiService);
+            if (wifi.IsWifiEnabled == false)
+            {
+                GuardarLocal GuardaError = new GuardarLocal();
+                GuardaError.creartxt("Wifi Deshabilitada");
+                Android.App.AlertDialog.Builder alertDialog = new Android.App.AlertDialog.Builder(this);
+                alertDialog.SetTitle(Html.FromHtml("<font color='#FFC107' size = 10>Error en el Adaptador WIFI</font>"));
+                alertDialog.SetIcon(Resource.Drawable.warning);
+                alertDialog.SetMessage(Html.FromHtml("<font color='#000000' size = 10>El Dispositivo no tiene la Wifi Activada, favor de activarlo</font>"));
+                alertDialog.SetCancelable(false);
+                alertDialog.SetNeutralButton("Ok", delegate
+                {
+                    alertDialog.Dispose();
+                    return;
+                });
+                alertDialog.Show();
+            }
+
+            ConnectivityManager connectivityManager = (ConnectivityManager)GetSystemService(Context.ConnectivityService);
+            NetworkInfo activeConnection = connectivityManager.ActiveNetworkInfo;
+            bool isOnline = (activeConnection != null) && activeConnection.IsConnected;
+            if (!isOnline)
+            {
+                GuardarLocal GuardaError = new GuardarLocal();
+                GuardaError.creartxt("Error en la conexion de red, No esta conectado a ninguna red");
+                Android.App.AlertDialog.Builder alertDialog = new Android.App.AlertDialog.Builder(this);
+                alertDialog.SetTitle(Html.FromHtml("<font color='#FFC107' size = 10>Error en la Conexion a Internet</font>"));
+                alertDialog.SetIcon(Resource.Drawable.warning);
+                alertDialog.SetMessage(Html.FromHtml("<font color='#000000' size = 10>El Dispositivo no Esta conectado a ninguna Red, favor de verificarlo</font>"));
+                alertDialog.SetCancelable(false);
+                alertDialog.SetNeutralButton("Ok", delegate
+                {
+                    alertDialog.Dispose();
+                    return;
+                });
+                alertDialog.Show();
+                return;
+            }
+
+            string cadena = "";
+            SqlCommand cmd;
+            SqlDataReader Info;
+
+            string szSQL, mFEC, MF;
+            System.String[] strTrailerx;
+            System.Collections.ArrayList listadetrailer = new System.Collections.ArrayList();
+
+            if (status == "A")
+            {
+                // --- Código original de APERTURA (sin cambios) ---
+                if (txtNo_trailer.Text.Trim().Length == 0)
+                {
+                    Toast.MakeText(this, "Error: No se ha Capturado el No. de Trailer", ToastLength.Short).Show();
+                    txtNo_trailer.Text = "";
+                    txtNo_trailer.RequestFocus();
+                    InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
+                    imm.ShowSoftInput(txtNo_trailer, ShowFlags.Implicit);
+                }
+                if (destino.Text.Trim().Length == 0)
+                {
+                    Toast.MakeText(this, "Error: No se ha Capturado el Destino", ToastLength.Short).Show();
+                    destino.Text = "";
+                    destino.RequestFocus();
+                }
+                if (Horainicial.Text.Trim().Length == 0)
+                {
+                    Toast.MakeText(this, "Error: No se ha Capturado la Hora Inicial", ToastLength.Short).Show();
+                    Horainicial.Text = "";
+                    Horainicial.RequestFocus();
+                    InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
+                    imm.ShowSoftInput(Horainicial, ShowFlags.Implicit);
+                }
+
+                MF = DateTime.Now.ToString("dd/MM/yyyy");
+                if (Particular.Checked)
+                {
+                    szSQL = "IF NOT EXISTS(SELECT No_Trailer FROM tb_mstr_trailer WHERE hora_trailer = '" + txtfecha.Text.Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "' AND no_trailer = 'PC') Insert into tb_mstr_trailer (FECHA,HORA_TRAILER,NO_TRAILER, TURNO, DESTINO, TRANSPORTE, TEMPINI, TEMPFIN, HORAINI, HORAFIN, GUARDAR, ANDEN, TRANSFER,CHOFER,RESPONSABLE," +
+                        "largo,gatas,ryan1,ryan2,concepto1,concepto2,concepto3,concepto4,concepto5a,concepto5b,concepto5c,concepto5d,concepto5e,concepto5f,concepto5g,concepto5h," +
+                        "concepto5i,concepto5j,concepto5k,concepto5l,concepto6,concepto7,concepto8,concepto9,concepto10,PosRyan1,PosRyan2,peso," +
+                        "conse, temp, HoraRegVig, HoraEnt, HoraSal, TiempoTot, Radio, Surtible, Placa, TiempoCar, PesoBascula, TempSetPoint)" +
+                        " Values " + "('" + MF + "' ,'" + txtfecha.Text.Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "' ,'" + txtNo_trailer.Text + "', '" + turnoactual + "', '" + destino.Text.Trim() + "', 'PC', '" +
+                        temperaturaInicial.Text + "', '', '" + Horainicial.Text.Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "','--:--','N','" + nuanden.Text.Trim() + "','N','" + chofer.Text.Trim() + "','" + responsable.Trim() + "'," +
+                        "'','0','0','0','','','','','','','','','','','','','','','','','','','','','','0','0','0.0'," +
+                        "'0','0','','','','','0','','','','0','')";
+                }
+                else if (Externo.Checked)
+                {
+                    szSQL = "IF NOT EXISTS(SELECT No_Trailer FROM tb_mstr_trailer WHERE hora_trailer = '" + txtfecha.Text.Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "' AND no_trailer = '" + txtNo_trailer.Text.Trim() + "') Insert into tb_mstr_trailer (FECHA,HORA_TRAILER,NO_TRAILER, TURNO, DESTINO, TRANSPORTE, TEMPINI, TEMPFIN, HORAINI, HORAFIN, GUARDAR, ANDEN, TRANSFER,CHOFER,RESPONSABLE," +
+                        "largo,gatas,ryan1,ryan2,concepto1,concepto2,concepto3,concepto4,concepto5a,concepto5b,concepto5c,concepto5d,concepto5e,concepto5f,concepto5g,concepto5h," +
+                        "concepto5i,concepto5j,concepto5k,concepto5l,concepto6,concepto7,concepto8,concepto9,concepto10,PosRyan1,PosRyan2,peso," +
+                        "conse, temp, HoraRegVig, HoraEnt, HoraSal, TiempoTot, Radio, Surtible, Placa, TiempoCar, PesoBascula, TempSetPoint, obs)" +
+                        " Values " + "('" + MF + "' ,'" + txtfecha.Text.Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "' ,'" + txtNo_trailer.Text + "', '" + turnoactual + "', '" + destino.Text.Trim() + "', 'EXTERNOS', '" +
+                        temperaturaInicial.Text + "', '', '" + Horainicial.Text.Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "','--:--','N','" + nuanden.Text.Trim() + "','N','" + chofer.Text.Trim() + "','" + responsable.Trim() + "'," +
+                        "'','0','0','0','','','','','','','','','','','','','','','','','','','','','','0','0','0.0'," +
+                        "'0','0','','','','','0','','','','0', '', 'EXTERNO CARGA ADICIONAL EMBARQUES')";
+                }
+                else
+                {
+                    if (txtryan1.Text.Trim().Length == 0)
+                    {
+                        Toast.MakeText(this, "Error: No se ha Capturado el No. de Ryan", ToastLength.Long).Show();
+                        return;
+                    }
+                    if (txtposryan1.Text.Trim().Length == 0)
+                    {
+                        Toast.MakeText(this, "Error: No se ha Capturado la Posicion del Ryan", ToastLength.Long).Show();
+                        return;
+                    }
+                    if (txttempsetpoint.Text.Trim().Length == 0)
+                    {
+                        Toast.MakeText(this, "Error: No se ha Capturado la Temp de Set Point", ToastLength.Long).Show();
+                        return;
+                    }
+                    if (Aguilares.Checked)
+                    {
+                        if (txtryan2.Text.Trim().Length == 0)
+                        {
+                            txtryan2.Text = "0";
+                            txtposryan2.Text = "0";
+                        }
+                        szSQL = "Insert into tb_mstr_trailer (FECHA,HORA_TRAILER,NO_TRAILER, TURNO, DESTINO, TRANSPORTE, TEMPINI, TEMPFIN, HORAINI, HORAFIN, GUARDAR, ANDEN, TRANSFER,CHOFER,RESPONSABLE," +
+                                            "largo,gatas,ryan1,ryan2,concepto1,concepto2,concepto3,concepto4,concepto5a,concepto5b,concepto5c,concepto5d,concepto5e,concepto5f,concepto5g,concepto5h," +
+                                            "concepto5i,concepto5j,concepto5k,concepto5l,concepto6,concepto7,concepto8,concepto9,concepto10,PosRyan1,PosRyan2,peso," +
+                                            "conse, temp, HoraRegVig, HoraEnt, HoraSal, TiempoTot, Radio, Surtible, Placa, TiempoCar, PesoBascula)" +
+                                            " Values " +
+                                            "('" + MF + "' ,'" + txtfecha.Text + "' ,'" + txtNo_trailer.Text + "', '" + turnoactual + "', '" + destino.Text.Trim() + "', '', '" +
+                                            temperaturaInicial.Text + "', '', '" + Horainicial.Text.Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "','--:--','N','" + nuanden.Text + "','N','" + chofer.Text.Trim() + "','" + responsable.Trim() + "'," +
+                                            "'" + largo.Trim() + "','" + gatas.Trim() + "','" + ryan1.Trim() + "','" + ryan2.Trim() + "','" + concepto1 + "','" + concepto2 + "','" + concepto3 + "','" +
+                                            concepto4 + "','" + concepto5A + "','" + concepto5B + "','" + concepto5C + "','" + concepto5D + "','" + concepto5E + "','" + concepto5F + "','" + concepto5G + "','" +
+                                            concepto5H + "','" + concepto5I + "','" + concepto5J + "','" + concepto5K + "','" + concepto5L + "','" + concepto6 + "','" + concepto7 + "','" + concepto8 + "','" +
+                                            concepto9 + "','" + concepto10 + "','" + posr1.Trim() + "','" + posr2.Trim() + "','0.0','0','0','','','','','0','','','','0')";
+                    }
+                    else
+                    {
+                        szSQL = "UPDATE tb_mstr_trailer SET deaguilares = '', TURNO = '" + turnoactual + "', TEMPINI = '" + temperaturaInicial.Text + "'," +
+                                        "ANDEN = '" + nuanden.Text + "', RESPONSABLE = '" + responsable + "', LARGO = '" + largo.Trim() + "', GATAS = '" + gatas.Trim() + "'," +
+                                        "ryan1 = '" + ryan1.Trim() + "',ryan2 = '" + ryan2.Trim() + "',concepto1 = '" + concepto1 + "',concepto2 = '" + concepto2 + "'," +
+                                        "concepto3 = '" + concepto3 + "',concepto4 = '" + concepto4 + "',concepto5i ='" + concepto5A + "',concepto5j ='" + concepto5B + "'," +
+                                        "concepto5k ='" + concepto5K + "',concepto6 ='" + concepto6 + "',concepto7 ='" + concepto7 + "',concepto8 ='" + concepto8 + "'," +
+                                        "concepto9 ='" + concepto9 + "',concepto10 ='" + concepto10 + "',PosRyan1 = '" + posr1.Trim() + "',PosRyan2 = '" + posr2.Trim() + "'," +
+                                        "tempsetpoint='" + setpointinicial + "'" +
+                                        " WHERE NO_TRAILER = '" + txtNo_trailer.Text + "' AND HORA_TRAILER = '" + txtfecha.Text + "'";
+                    }
+                }
+
+                thisConnection.Open();
+                cmd = new SqlCommand(szSQL, thisConnection);
+                cmd.ExecuteNonQuery();
+                thisConnection.Close();
+                Toast.MakeText(this, "DATOS GRABADOS CON EXITO", ToastLength.Long).Show();
+                if (AndenValidar != "99")
+                {
+                    Nuevo();
+                }
+                cargarInfoTrailer();
+            }
+            else  // CIERRE DEL TRAILER
+            {
+                string folio_pedido = "";
+                string folio_embarque = "";
+                string horafin = "";
+
+                thisConnection.Open();
+                try
+                {
+                    cadena = "SELECT pdn_folio, ISNULL(emb_folio, '') AS emb_folio, ISNULL(hora_fin, '') AS hora_fin FROM tb_mstr_pedidos_nal LEFT JOIN tb_mstr_embarque ON pdn_folio = emb_folio AND sts != 'C' Where placacaja = '" + txtNo_trailer.Text.Trim() + "' and pdn_fecha = '" + txtfecha.Text.Trim() + "' and pdn_estatus != 'C' UNION SELECT pdn_folio, ISNULL(emb_folio, '') AS emb_folio, ISNULL(hora_fin, '') AS hora_fin FROM tb_mstr_pedidos_exp LEFT JOIN tb_mstr_embarque ON pdn_folio = emb_folio AND sts != 'C' Where placacaja = '" + txtNo_trailer.Text.Trim() + "' and pdn_fecha = '" + txtfecha.Text.Trim() + "' and pdn_estatus != 'C' ORDER BY HORA_FIN desc";
+                    cmd = new SqlCommand(cadena);
+                    cmd.Connection = thisConnection;
+                    SqlDataReader Infox = cmd.ExecuteReader();
+                    while (Infox.Read())
+                    {
+                        folio_embarque = Infox["emb_folio"].ToString().Trim();
+                        folio_pedido = Infox["pdn_folio"].ToString().Trim();
+                        horafin = Infox["hora_fin"].ToString().Trim();
+                    }
+                }
+                catch { }
+
+                thisConnection.Close();
+
+                if (folio_pedido != "")
+                {
+                    if (folio_embarque == "")
+                    {
+                        Toast.MakeText(this, "Error: Hay Ordenes de Venta Pendientes Por Cargar", ToastLength.Long).Show();
+                        return;
+                    }
+                    else
+                    {
+                        if (Convert.ToInt32(folio_embarque).ToString() == folio_pedido)
+                        {
+                            if (horafin.Trim() == "--:--")
+                            {
+                                Toast.MakeText(this, "Error: Hay Ordenes de Venta Pendientes Por Cerrar", ToastLength.Long).Show();
+                                return;
+                            }
+                        }
+                        else
+                        {
+                            Toast.MakeText(this, " Error: Ordenes de Venta Pendientes por cargar a este trailer", ToastLength.Long).Show();
+                            return;
+                        }
+                    }
+                }
+
+                if (txtNo_trailer.Text.Trim() != "PC" && Externos.Trim() != "EXTERNO CARGA ADICIONAL EMBARQUES")
+                {
+                    string porcentaje = "0";
+                    thisConnection.Open();
+                    cadena = "SELECT A.porcentaje FROM tb_det_revision_trailer AS A INNER JOIN tb_mstr_trailer AS B ON A.fecha = B.fecha AND A.conseini = B.conse WHERE B.NO_TRAILER = '" + txtNo_trailer.Text.Trim() + "' AND B.HORA_TRAILER = '" + txtfecha.Text.Trim() + "'";
+                    cmd = new SqlCommand(cadena);
+                    cmd.Connection = thisConnection;
+                    Info = cmd.ExecuteReader();
+                    while (Info.Read())
+                    {
+                        porcentaje = Info["porcentaje"].ToString().Trim();
+                    }
+                    thisConnection.Close();
+
+                    if (porcentaje.Replace(".00", "") != "100")
+                    {
+                        Toast.MakeText(this, "Error: No se Puede Cerrar El Trailer porque las Fotos de Verificacion no estan completadas al 100%", ToastLength.Long).Show();
+                        return;
+                    }
+                }
+
+                // *** DIÁLOGO DE OBSERVACIONES CON PRESERVACIÓN DEL COMENTARIO PREVIO ***
+                MostrarDialogoObservacionesSiAplica(folio_pedido, (observacionSeleccionada) =>
+                {
+                    mFEC = Convert.ToString(HoraFinal.Text);
+                    string sqlUpdate;
+
+                    if (string.IsNullOrEmpty(observacionSeleccionada))
+                    {
+                        // Cierre sin observación: NO se modifica el campo obs
+                        sqlUpdate = "UPDATE tb_mstr_trailer SET TEMPFIN = @tempFin, HORAFIN = @horaFin, GUARDAR = 'S' WHERE NO_TRAILER = @noTrailer AND HORA_TRAILER = @horaTrailer";
+                    }
+                    else
+                    {
+                        // Cierre con observación: SE CONCATENA con el valor anterior (preservándolo)
+                        sqlUpdate = @"UPDATE tb_mstr_trailer 
+                              SET TEMPFIN = @tempFin, 
+                                  HORAFIN = @horaFin, 
+                                  GUARDAR = 'S', 
+                                  obs = ISNULL(obs + ' | ', '') + @obs 
+                              WHERE NO_TRAILER = @noTrailer AND HORA_TRAILER = @horaTrailer";
+                    }
+
+                    using (SqlCommand cmdUpdate = new SqlCommand(sqlUpdate, thisConnection))
+                    {
+                        cmdUpdate.Parameters.AddWithValue("@tempFin", temperaturaFinal.Text);
+                        cmdUpdate.Parameters.AddWithValue("@horaFin", mFEC.Replace("a. m.", "a.m.").Replace("p. m.", "p.m."));
+                        cmdUpdate.Parameters.AddWithValue("@noTrailer", txtNo_trailer.Text);
+                        cmdUpdate.Parameters.AddWithValue("@horaTrailer", txtfecha.Text);
+                        if (!string.IsNullOrEmpty(observacionSeleccionada))
+                            cmdUpdate.Parameters.AddWithValue("@obs", observacionSeleccionada);
+
+                        thisConnection.Open();
+                        cmdUpdate.ExecuteNonQuery();
+                        thisConnection.Close();
+                    }
+
+                    Toast.MakeText(this, "DATOS GRABADOS CON EXITO", ToastLength.Long).Show();
+
+                    // Actualizar la lista de trailers en el Spinner (código original)
+                    thisConnection.Open();
+                    string Cadena = "Select Count(NO_TRAILER) From tb_mstr_trailer Where guardar = 'N'  AND Anden = '" + AndenValidar + "'";
+                    SqlCommand cmdx = new SqlCommand(Cadena, thisConnection);
+                    string valor = Convert.ToString(cmdx.ExecuteScalar());
+                    strTrailerx = new System.String[Convert.ToInt32(valor) + 1];
+                    strTrailerx[0] = "";
+                    thisConnection.Close();
+                    int x = 1;
+                    thisConnection.Open();
+                    cadena = "Select NO_TRAILER From tb_mstr_trailer Where guardar = 'N' AND Anden = '" + AndenValidar + "' order by NO_TRAILER";
+                    cmd = new SqlCommand(cadena);
+                    cmd.Connection = thisConnection;
+                    Info = cmd.ExecuteReader();
+                    while (Info.Read())
+                    {
+                        strTrailerx[x] = Info["NO_TRAILER"].ToString().Trim();
+                        x++;
+                    }
+                    thisConnection.Close();
+                    Collections.AddAll(listadetrailer, strTrailerx);
+                    numtrail.Adapter = null;
+                    comboAdapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleSpinnerItem, strTrailerx);
+                    numtrail.Adapter = comboAdapter;
+                    numtrail.ItemSelected += new EventHandler<AdapterView.ItemSelectedEventArgs>(spinner_Trailer);
+
+                    if (AndenValidar != "99")
+                    {
+                        Nuevo();
+                    }
+                    cargarInfoTrailer();
+                });
+
+                return;  // Importante: salir del evento para no ejecutar el código antiguo
+            }
+
+            // Código que sigue para cuando status == "A" (apertura) - ya se ejecutó arriba en ese caso.
+            thisConnection.Open();
+            string Cadena2 = "Select Count(NO_TRAILER) From tb_mstr_trailer Where guardar = 'N'  AND Anden = '" + AndenValidar + "'";
+            SqlCommand cmdx2 = new SqlCommand(Cadena2, thisConnection);
+            string valor2 = Convert.ToString(cmdx2.ExecuteScalar());
+            strTrailerx = new System.String[Convert.ToInt32(valor2) + 1];
+            strTrailerx[0] = "";
+            thisConnection.Close();
+            int x2 = 1;
+            thisConnection.Open();
+            cadena = "Select NO_TRAILER From tb_mstr_trailer Where guardar = 'N' AND Anden = '" + AndenValidar + "' order by NO_TRAILER";
+            cmd = new SqlCommand(cadena);
+            cmd.Connection = thisConnection;
+            Info = cmd.ExecuteReader();
+            while (Info.Read())
+            {
+                strTrailerx[x2] = Info["NO_TRAILER"].ToString().Trim();
+                x2++;
+            }
+            thisConnection.Close();
+            Collections.AddAll(listadetrailer, strTrailerx);
+            numtrail.Adapter = null;
+            comboAdapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleSpinnerItem, strTrailerx);
+            numtrail.Adapter = comboAdapter;
+            numtrail.ItemSelected += new EventHandler<AdapterView.ItemSelectedEventArgs>(spinner_Trailer);
+            if (AndenValidar != "99")
+            {
+                Nuevo();
+            }
             cargarInfoTrailer();
         }
 
@@ -2156,6 +2549,219 @@ namespace CargaEmbarques
             comboAdapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleSpinnerItem, arrayturno);
             Turno.Adapter = comboAdapter;
             Turno.ItemSelected += new EventHandler<AdapterView.ItemSelectedEventArgs>(Turno_spinner);
+        }
+
+        // ==================== MÉTODO INTEGRADO ====================
+        private void MostrarDialogoObservacionesSiAplica(string folioEmbarque, Action<string> onGuardar)
+        {
+            bool masde6Horas = false;
+            bool despues12am = false;
+
+            // ── Condición 2: hora actual entre 00:00 y 05:59 (madrugada) ─────────
+            int horaActual = DateTime.Now.Hour;
+            despues12am = (horaActual >= 0 && horaActual < 6);
+
+            // ── Condición 1: más de 6 horas en planta (desde registro de vigilancia) ────────────────────────────
+            try
+            {
+                if (thisConnection.State == ConnectionState.Closed)
+                    thisConnection.Open();
+
+                // Se une tb_mstr_embarque con tb_mstr_trailer via pdn_folio = emb_folio
+                // y se toma HoraRegVig que es char(5) en formato HH:mm
+                string sqlHoraVig =
+                    @"SELECT TOP 1 t.HoraRegVig
+FROM tb_mstr_trailer t
+INNER JOIN tb_mstr_embarque e 
+    ON CAST(e.emb_folio AS INT) = CAST(t.pdn_folio AS INT) -- Convertimos ambos a enteros
+WHERE CAST(e.emb_folio AS INT) = @folio
+  AND t.HoraRegVig IS NOT NULL
+  AND LTRIM(RTRIM(t.HoraRegVig)) != ''
+ORDER BY t.fecha DESC";
+
+                using (SqlCommand cmd = new SqlCommand(sqlHoraVig, thisConnection))
+                {
+                    cmd.Parameters.AddWithValue("@folio", folioEmbarque);
+                    object resultado = cmd.ExecuteScalar();
+
+                    if (resultado != null && resultado != DBNull.Value)
+                    {
+                        string horaStr = resultado.ToString().Trim();
+
+                        // HoraRegVig es char(5) → formato "HH:mm" (ej. "08:30", "23:45")
+                        bool parsed = DateTime.TryParseExact(
+                            horaStr,
+                            new[] { "HH:mm", "H:mm" },
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            System.Globalization.DateTimeStyles.None,
+                            out DateTime horaEntrada
+                        );
+
+                        if (parsed)
+                        {
+                            // hora_ini solo tiene hora/minuto → combinar con la fecha de hoy
+                            DateTime ahora = DateTime.Now;
+                            DateTime entradaHoy = new DateTime(
+                                ahora.Year, ahora.Month, ahora.Day,
+                                horaEntrada.Hour, horaEntrada.Minute, 0
+                            );
+
+                            // Si la hora de entrada es mayor que ahora, el trailer
+                            // entró el día anterior (cruzó medianoche)
+                            if (entradaHoy > ahora)
+                                entradaHoy = entradaHoy.AddDays(-1);
+
+                            double horasEnPlanta = (ahora - entradaHoy).TotalHours;
+                            masde6Horas = horasEnPlanta > 6;
+
+                            Android.Util.Log.Debug("CargaEmbarques",
+                                $"hora_ini='{horaStr}' → entrada={entradaHoy:HH:mm} | " +
+                                $"ahora={ahora:HH:mm} | horas={horasEnPlanta:F1} | >6h={masde6Horas}");
+                        }
+                        else
+                        {
+                            // Parse fallido → NO activar la condición (evita falsos positivos)
+                            Android.Util.Log.Warn("CargaEmbarques",
+                                $"No se pudo parsear hora_ini: '{horaStr}' — condición >6h ignorada.");
+                        }
+                    }
+                    else
+                    {
+                        // No se encontró registro de vigilancia para este folio
+                        Android.Util.Log.Warn("CargaEmbarques",
+                            $"Sin registro de vigilancia para folio '{folioEmbarque}' — condición >6h ignorada.");
+                    }
+                }
+            }
+            catch (Java.Lang.Exception ex)
+            {
+                Toast.MakeText(this, "Error al verificar hora de entrada: " + ex.Message,
+                               ToastLength.Long).Show();
+            }
+            finally
+            {
+                if (thisConnection.State == ConnectionState.Open)
+                    thisConnection.Close();
+            }
+
+            // ── Si ninguna condición aplica → guardar directo ─────────────────────
+            if (!masde6Horas && !despues12am)
+            {
+                onGuardar?.Invoke(string.Empty);
+                return;
+            }
+
+            // ── Cargar catálogo de observaciones desde SQL Server ─────────────────
+            var listaObservaciones = new List<string>();
+
+            try
+            {
+                if (thisConnection.State == ConnectionState.Closed)
+                    thisConnection.Open();
+
+                string sqlObs =
+                    @"SELECT obs_descripcion 
+              FROM tb_cat_observaciones
+              WHERE obs_activo = 'S'
+                AND (obs_sistema = 'CargaEmbarques' OR obs_sistema IS NULL)
+              ORDER BY obs_descripcion";
+
+                using (SqlCommand cmd = new SqlCommand(sqlObs, thisConnection))
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                        listaObservaciones.Add(reader["obs_descripcion"].ToString().Trim());
+                }
+            }
+            catch (Java.Lang.Exception ex)
+            {
+                Toast.MakeText(this, "Error al cargar observaciones: " + ex.Message,
+                               ToastLength.Long).Show();
+            }
+            finally
+            {
+                if (thisConnection.State == ConnectionState.Open)
+                    thisConnection.Close();
+            }
+
+            // ── Construir la vista del diálogo ────────────────────────────────────
+            LinearLayout layout = new LinearLayout(this)
+            {
+                Orientation = Orientation.Vertical
+            };
+            layout.SetPadding(48, 24, 48, 8);
+
+            // Mensaje descriptivo según la condición detectada
+            string motivoCondicion = (masde6Horas && despues12am)
+                ? "El trailer lleva más de 6 horas en planta y la salida es después de las 12:00 a.m."
+                : masde6Horas
+                    ? "El trailer lleva más de 6 horas en planta."
+                    : "La salida del trailer es después de las 12:00 a.m.";
+
+            TextView tvMensaje = new TextView(this);
+            tvMensaje.Text = motivoCondicion;
+            tvMensaje.TextSize = 14f;
+            tvMensaje.SetTextColor(Android.Graphics.Color.ParseColor("#333333"));
+            tvMensaje.SetPadding(0, 0, 0, 20);
+            layout.AddView(tvMensaje);
+
+            TextView tvLabel = new TextView(this);
+            tvLabel.Text = "Razón de la observación:";
+            tvLabel.TextSize = 14f;
+            tvLabel.SetTypeface(null, Android.Graphics.TypefaceStyle.Bold);
+            layout.AddView(tvLabel);
+
+            Spinner spinner = new Spinner(this);
+            var adapter = new ArrayAdapter<string>(
+                this,
+                Android.Resource.Layout.SimpleSpinnerDropDownItem,
+                listaObservaciones.Count > 0
+                    ? listaObservaciones
+                    : new List<string> { "(Sin opciones disponibles)" }
+            );
+            adapter.SetDropDownViewResource(Android.Resource.Layout.SimpleSpinnerDropDownItem);
+            spinner.Adapter = adapter;
+            layout.AddView(spinner);
+
+            // ── Mostrar AlertDialog ───────────────────────────────────────────────
+            Android.App.AlertDialog.Builder dialogObs = new Android.App.AlertDialog.Builder(this);
+            dialogObs.SetTitle(
+                Html.FromHtml("<font color='#DF0101' size='10'><b>CERRAR EMBARQUE CON OBSERVACIONES</b></font>")
+            );
+            dialogObs.SetIcon(Resource.Drawable.Info);
+            dialogObs.SetCancelable(false);
+            dialogObs.SetView(layout);
+
+            dialogObs.SetPositiveButton(
+                Html.FromHtml("<font color='#DF0101'>Aceptar</font>"),
+                (senderObs, argsObs) =>
+                {
+                    if (listaObservaciones.Count == 0)
+                    {
+                        Toast.MakeText(this, "No hay observaciones disponibles en el catálogo.",
+                                       ToastLength.Long).Show();
+                        return;
+                    }
+
+                    string observacionSeleccionada = spinner.SelectedItem?.ToString() ?? string.Empty;
+
+                    if (string.IsNullOrWhiteSpace(observacionSeleccionada))
+                    {
+                        Toast.MakeText(this, "Debe seleccionar una observación antes de continuar.",
+                                       ToastLength.Long).Show();
+                        return;
+                    }
+
+                    onGuardar?.Invoke(observacionSeleccionada);
+                }
+            );
+
+            dialogObs.SetNegativeButton(
+                Html.FromHtml("<font color='#DF0101'>Cancelar</font>"),
+                (senderObs, argsObs) => { /* el usuario canceló, no se guarda nada */ }
+            );
+
+            dialogObs.Show();
         }
     }
 }
