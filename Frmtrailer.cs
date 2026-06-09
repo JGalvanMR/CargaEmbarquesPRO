@@ -481,7 +481,7 @@ namespace CargaEmbarques
             }
         }
 
-        private void Grabar_Click(object sender, EventArgs e)
+        private void Grabar_ClickLEGACY(object sender, EventArgs e)
         {
 
             WifiManager wifi = (WifiManager)Android.App.Application.Context.GetSystemService(Context.WifiService);
@@ -814,6 +814,340 @@ namespace CargaEmbarques
                 Nuevo();
             }
             //Nuevo();
+            cargarInfoTrailer();
+        }
+
+        private void Grabar_Click(object sender, EventArgs e)
+        {
+            WifiManager wifi = (WifiManager)Android.App.Application.Context.GetSystemService(Context.WifiService);
+            if (wifi.IsWifiEnabled == false)
+            {
+                GuardarLocal GuardaError = new GuardarLocal();
+                GuardaError.creartxt("Wifi Deshabilitada");
+                Android.App.AlertDialog.Builder alertDialog = new Android.App.AlertDialog.Builder(this);
+                alertDialog.SetTitle(Html.FromHtml("<font color='#FFC107' size = 10>Error en el Adaptador WIFI</font>"));
+                alertDialog.SetIcon(Resource.Drawable.warning);
+                alertDialog.SetMessage(Html.FromHtml("<font color='#000000' size = 10>El Dispositivo no tiene la Wifi Activada, favor de activarlo</font>"));
+                alertDialog.SetCancelable(false);
+                alertDialog.SetNeutralButton("Ok", delegate
+                {
+                    alertDialog.Dispose();
+                    return;
+                });
+                alertDialog.Show();
+            }
+
+            ConnectivityManager connectivityManager = (ConnectivityManager)GetSystemService(Context.ConnectivityService);
+            NetworkInfo activeConnection = connectivityManager.ActiveNetworkInfo;
+            bool isOnline = (activeConnection != null) && activeConnection.IsConnected;
+            if (!isOnline)
+            {
+                GuardarLocal GuardaError = new GuardarLocal();
+                GuardaError.creartxt("Error en la conexion de red, No esta conectado a ninguna red");
+                Android.App.AlertDialog.Builder alertDialog = new Android.App.AlertDialog.Builder(this);
+                alertDialog.SetTitle(Html.FromHtml("<font color='#FFC107' size = 10>Error en la Conexion a Internet</font>"));
+                alertDialog.SetIcon(Resource.Drawable.warning);
+                alertDialog.SetMessage(Html.FromHtml("<font color='#000000' size = 10>El Dispositivo no Esta conectado a ninguna Red, favor de verificarlo</font>"));
+                alertDialog.SetCancelable(false);
+                alertDialog.SetNeutralButton("Ok", delegate
+                {
+                    alertDialog.Dispose();
+                    return;
+                });
+                alertDialog.Show();
+                return;
+            }
+
+            string cadena = "";
+            SqlCommand cmd;
+            SqlDataReader Info;
+
+            string szSQL, mFEC, MF;
+            System.String[] strTrailerx;
+            System.Collections.ArrayList listadetrailer = new System.Collections.ArrayList();
+
+            if (status == "A")
+            {
+                // --- Código original de APERTURA (sin cambios) ---
+                if (txtNo_trailer.Text.Trim().Length == 0)
+                {
+                    Toast.MakeText(this, "Error: No se ha Capturado el No. de Trailer", ToastLength.Short).Show();
+                    txtNo_trailer.Text = "";
+                    txtNo_trailer.RequestFocus();
+                    InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
+                    imm.ShowSoftInput(txtNo_trailer, ShowFlags.Implicit);
+                }
+                if (destino.Text.Trim().Length == 0)
+                {
+                    Toast.MakeText(this, "Error: No se ha Capturado el Destino", ToastLength.Short).Show();
+                    destino.Text = "";
+                    destino.RequestFocus();
+                }
+                if (Horainicial.Text.Trim().Length == 0)
+                {
+                    Toast.MakeText(this, "Error: No se ha Capturado la Hora Inicial", ToastLength.Short).Show();
+                    Horainicial.Text = "";
+                    Horainicial.RequestFocus();
+                    InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
+                    imm.ShowSoftInput(Horainicial, ShowFlags.Implicit);
+                }
+
+                MF = DateTime.Now.ToString("dd/MM/yyyy");
+                if (Particular.Checked)
+                {
+                    szSQL = "IF NOT EXISTS(SELECT No_Trailer FROM tb_mstr_trailer WHERE hora_trailer = '" + txtfecha.Text.Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "' AND no_trailer = 'PC') Insert into tb_mstr_trailer (FECHA,HORA_TRAILER,NO_TRAILER, TURNO, DESTINO, TRANSPORTE, TEMPINI, TEMPFIN, HORAINI, HORAFIN, GUARDAR, ANDEN, TRANSFER,CHOFER,RESPONSABLE," +
+                        "largo,gatas,ryan1,ryan2,concepto1,concepto2,concepto3,concepto4,concepto5a,concepto5b,concepto5c,concepto5d,concepto5e,concepto5f,concepto5g,concepto5h," +
+                        "concepto5i,concepto5j,concepto5k,concepto5l,concepto6,concepto7,concepto8,concepto9,concepto10,PosRyan1,PosRyan2,peso," +
+                        "conse, temp, HoraRegVig, HoraEnt, HoraSal, TiempoTot, Radio, Surtible, Placa, TiempoCar, PesoBascula, TempSetPoint)" +
+                        " Values " + "('" + MF + "' ,'" + txtfecha.Text.Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "' ,'" + txtNo_trailer.Text + "', '" + turnoactual + "', '" + destino.Text.Trim() + "', 'PC', '" +
+                        temperaturaInicial.Text + "', '', '" + Horainicial.Text.Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "','--:--','N','" + nuanden.Text.Trim() + "','N','" + chofer.Text.Trim() + "','" + responsable.Trim() + "'," +
+                        "'','0','0','0','','','','','','','','','','','','','','','','','','','','','','0','0','0.0'," +
+                        "'0','0','','','','','0','','','','0','')";
+                }
+                else if (Externo.Checked)
+                {
+                    szSQL = "IF NOT EXISTS(SELECT No_Trailer FROM tb_mstr_trailer WHERE hora_trailer = '" + txtfecha.Text.Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "' AND no_trailer = '" + txtNo_trailer.Text.Trim() + "') Insert into tb_mstr_trailer (FECHA,HORA_TRAILER,NO_TRAILER, TURNO, DESTINO, TRANSPORTE, TEMPINI, TEMPFIN, HORAINI, HORAFIN, GUARDAR, ANDEN, TRANSFER,CHOFER,RESPONSABLE," +
+                        "largo,gatas,ryan1,ryan2,concepto1,concepto2,concepto3,concepto4,concepto5a,concepto5b,concepto5c,concepto5d,concepto5e,concepto5f,concepto5g,concepto5h," +
+                        "concepto5i,concepto5j,concepto5k,concepto5l,concepto6,concepto7,concepto8,concepto9,concepto10,PosRyan1,PosRyan2,peso," +
+                        "conse, temp, HoraRegVig, HoraEnt, HoraSal, TiempoTot, Radio, Surtible, Placa, TiempoCar, PesoBascula, TempSetPoint, obs)" +
+                        " Values " + "('" + MF + "' ,'" + txtfecha.Text.Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "' ,'" + txtNo_trailer.Text + "', '" + turnoactual + "', '" + destino.Text.Trim() + "', 'EXTERNOS', '" +
+                        temperaturaInicial.Text + "', '', '" + Horainicial.Text.Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "','--:--','N','" + nuanden.Text.Trim() + "','N','" + chofer.Text.Trim() + "','" + responsable.Trim() + "'," +
+                        "'','0','0','0','','','','','','','','','','','','','','','','','','','','','','0','0','0.0'," +
+                        "'0','0','','','','','0','','','','0', '', 'EXTERNO CARGA ADICIONAL EMBARQUES')";
+                }
+                else
+                {
+                    if (txtryan1.Text.Trim().Length == 0)
+                    {
+                        Toast.MakeText(this, "Error: No se ha Capturado el No. de Ryan", ToastLength.Long).Show();
+                        return;
+                    }
+                    if (txtposryan1.Text.Trim().Length == 0)
+                    {
+                        Toast.MakeText(this, "Error: No se ha Capturado la Posicion del Ryan", ToastLength.Long).Show();
+                        return;
+                    }
+                    if (txttempsetpoint.Text.Trim().Length == 0)
+                    {
+                        Toast.MakeText(this, "Error: No se ha Capturado la Temp de Set Point", ToastLength.Long).Show();
+                        return;
+                    }
+                    if (Aguilares.Checked)
+                    {
+                        if (txtryan2.Text.Trim().Length == 0)
+                        {
+                            txtryan2.Text = "0";
+                            txtposryan2.Text = "0";
+                        }
+                        szSQL = "Insert into tb_mstr_trailer (FECHA,HORA_TRAILER,NO_TRAILER, TURNO, DESTINO, TRANSPORTE, TEMPINI, TEMPFIN, HORAINI, HORAFIN, GUARDAR, ANDEN, TRANSFER,CHOFER,RESPONSABLE," +
+                                            "largo,gatas,ryan1,ryan2,concepto1,concepto2,concepto3,concepto4,concepto5a,concepto5b,concepto5c,concepto5d,concepto5e,concepto5f,concepto5g,concepto5h," +
+                                            "concepto5i,concepto5j,concepto5k,concepto5l,concepto6,concepto7,concepto8,concepto9,concepto10,PosRyan1,PosRyan2,peso," +
+                                            "conse, temp, HoraRegVig, HoraEnt, HoraSal, TiempoTot, Radio, Surtible, Placa, TiempoCar, PesoBascula)" +
+                                            " Values " +
+                                            "('" + MF + "' ,'" + txtfecha.Text + "' ,'" + txtNo_trailer.Text + "', '" + turnoactual + "', '" + destino.Text.Trim() + "', '', '" +
+                                            temperaturaInicial.Text + "', '', '" + Horainicial.Text.Replace("a. m.", "a.m.").Replace("p. m.", "p.m.") + "','--:--','N','" + nuanden.Text + "','N','" + chofer.Text.Trim() + "','" + responsable.Trim() + "'," +
+                                            "'" + largo.Trim() + "','" + gatas.Trim() + "','" + ryan1.Trim() + "','" + ryan2.Trim() + "','" + concepto1 + "','" + concepto2 + "','" + concepto3 + "','" +
+                                            concepto4 + "','" + concepto5A + "','" + concepto5B + "','" + concepto5C + "','" + concepto5D + "','" + concepto5E + "','" + concepto5F + "','" + concepto5G + "','" +
+                                            concepto5H + "','" + concepto5I + "','" + concepto5J + "','" + concepto5K + "','" + concepto5L + "','" + concepto6 + "','" + concepto7 + "','" + concepto8 + "','" +
+                                            concepto9 + "','" + concepto10 + "','" + posr1.Trim() + "','" + posr2.Trim() + "','0.0','0','0','','','','','0','','','','0')";
+                    }
+                    else
+                    {
+                        szSQL = "UPDATE tb_mstr_trailer SET deaguilares = '', TURNO = '" + turnoactual + "', TEMPINI = '" + temperaturaInicial.Text + "'," +
+                                        "ANDEN = '" + nuanden.Text + "', RESPONSABLE = '" + responsable + "', LARGO = '" + largo.Trim() + "', GATAS = '" + gatas.Trim() + "'," +
+                                        "ryan1 = '" + ryan1.Trim() + "',ryan2 = '" + ryan2.Trim() + "',concepto1 = '" + concepto1 + "',concepto2 = '" + concepto2 + "'," +
+                                        "concepto3 = '" + concepto3 + "',concepto4 = '" + concepto4 + "',concepto5i ='" + concepto5A + "',concepto5j ='" + concepto5B + "'," +
+                                        "concepto5k ='" + concepto5K + "',concepto6 ='" + concepto6 + "',concepto7 ='" + concepto7 + "',concepto8 ='" + concepto8 + "'," +
+                                        "concepto9 ='" + concepto9 + "',concepto10 ='" + concepto10 + "',PosRyan1 = '" + posr1.Trim() + "',PosRyan2 = '" + posr2.Trim() + "'," +
+                                        "tempsetpoint='" + setpointinicial + "'" +
+                                        " WHERE NO_TRAILER = '" + txtNo_trailer.Text + "' AND HORA_TRAILER = '" + txtfecha.Text + "'";
+                    }
+                }
+
+                thisConnection.Open();
+                cmd = new SqlCommand(szSQL, thisConnection);
+                cmd.ExecuteNonQuery();
+                thisConnection.Close();
+                Toast.MakeText(this, "DATOS GRABADOS CON EXITO", ToastLength.Long).Show();
+                if (AndenValidar != "99")
+                {
+                    Nuevo();
+                }
+                cargarInfoTrailer();
+            }
+            else  // CIERRE DEL TRAILER
+            {
+                string folio_pedido = "";
+                string folio_embarque = "";
+                string horafin = "";
+
+                thisConnection.Open();
+                try
+                {
+                    cadena = "SELECT pdn_folio, ISNULL(emb_folio, '') AS emb_folio, ISNULL(hora_fin, '') AS hora_fin FROM tb_mstr_pedidos_nal LEFT JOIN tb_mstr_embarque ON pdn_folio = emb_folio AND sts != 'C' Where placacaja = '" + txtNo_trailer.Text.Trim() + "' and pdn_fecha = '" + txtfecha.Text.Trim() + "' and pdn_estatus != 'C' UNION SELECT pdn_folio, ISNULL(emb_folio, '') AS emb_folio, ISNULL(hora_fin, '') AS hora_fin FROM tb_mstr_pedidos_exp LEFT JOIN tb_mstr_embarque ON pdn_folio = emb_folio AND sts != 'C' Where placacaja = '" + txtNo_trailer.Text.Trim() + "' and pdn_fecha = '" + txtfecha.Text.Trim() + "' and pdn_estatus != 'C' ORDER BY HORA_FIN desc";
+                    cmd = new SqlCommand(cadena);
+                    cmd.Connection = thisConnection;
+                    SqlDataReader Infox = cmd.ExecuteReader();
+                    while (Infox.Read())
+                    {
+                        folio_embarque = Infox["emb_folio"].ToString().Trim();
+                        folio_pedido = Infox["pdn_folio"].ToString().Trim();
+                        horafin = Infox["hora_fin"].ToString().Trim();
+                    }
+                }
+                catch { }
+
+                thisConnection.Close();
+
+                if (folio_pedido != "")
+                {
+                    if (folio_embarque == "")
+                    {
+                        Toast.MakeText(this, "Error: Hay Ordenes de Venta Pendientes Por Cargar", ToastLength.Long).Show();
+                        return;
+                    }
+                    else
+                    {
+                        if (Convert.ToInt32(folio_embarque).ToString() == folio_pedido)
+                        {
+                            if (horafin.Trim() == "--:--")
+                            {
+                                Toast.MakeText(this, "Error: Hay Ordenes de Venta Pendientes Por Cerrar", ToastLength.Long).Show();
+                                return;
+                            }
+                        }
+                        else
+                        {
+                            Toast.MakeText(this, " Error: Ordenes de Venta Pendientes por cargar a este trailer", ToastLength.Long).Show();
+                            return;
+                        }
+                    }
+                }
+
+                if (txtNo_trailer.Text.Trim() != "PC" && Externos.Trim() != "EXTERNO CARGA ADICIONAL EMBARQUES")
+                {
+                    string porcentaje = "0";
+                    thisConnection.Open();
+                    cadena = "SELECT A.porcentaje FROM tb_det_revision_trailer AS A INNER JOIN tb_mstr_trailer AS B ON A.fecha = B.fecha AND A.conseini = B.conse WHERE B.NO_TRAILER = '" + txtNo_trailer.Text.Trim() + "' AND B.HORA_TRAILER = '" + txtfecha.Text.Trim() + "'";
+                    cmd = new SqlCommand(cadena);
+                    cmd.Connection = thisConnection;
+                    Info = cmd.ExecuteReader();
+                    while (Info.Read())
+                    {
+                        porcentaje = Info["porcentaje"].ToString().Trim();
+                    }
+                    thisConnection.Close();
+
+                    if (porcentaje.Replace(".00", "") != "100")
+                    {
+                        Toast.MakeText(this, "Error: No se Puede Cerrar El Trailer porque las Fotos de Verificacion no estan completadas al 100%", ToastLength.Long).Show();
+                        return;
+                    }
+                }
+
+                // *** DIÁLOGO DE OBSERVACIONES CON PRESERVACIÓN DEL COMENTARIO PREVIO ***
+                MostrarDialogoObservacionesSiAplica(folio_pedido, (observacionSeleccionada) =>
+                {
+                    mFEC = Convert.ToString(HoraFinal.Text);
+                    string sqlUpdate;
+
+                    if (string.IsNullOrEmpty(observacionSeleccionada))
+                    {
+                        // Cierre sin observación: NO se modifica el campo obs
+                        sqlUpdate = "UPDATE tb_mstr_trailer SET TEMPFIN = @tempFin, HORAFIN = @horaFin, GUARDAR = 'S' WHERE NO_TRAILER = @noTrailer AND HORA_TRAILER = @horaTrailer";
+                    }
+                    else
+                    {
+                        // Cierre con observación: SE CONCATENA con el valor anterior (preservándolo)
+                        sqlUpdate = @"UPDATE tb_mstr_trailer 
+                              SET TEMPFIN = @tempFin, 
+                                  HORAFIN = @horaFin, 
+                                  GUARDAR = 'S', 
+                                  obs = ISNULL(obs + ' | ', '') + @obs 
+                              WHERE NO_TRAILER = @noTrailer AND HORA_TRAILER = @horaTrailer";
+                    }
+
+                    using (SqlCommand cmdUpdate = new SqlCommand(sqlUpdate, thisConnection))
+                    {
+                        cmdUpdate.Parameters.AddWithValue("@tempFin", temperaturaFinal.Text);
+                        cmdUpdate.Parameters.AddWithValue("@horaFin", mFEC.Replace("a. m.", "a.m.").Replace("p. m.", "p.m."));
+                        cmdUpdate.Parameters.AddWithValue("@noTrailer", txtNo_trailer.Text);
+                        cmdUpdate.Parameters.AddWithValue("@horaTrailer", txtfecha.Text);
+                        if (!string.IsNullOrEmpty(observacionSeleccionada))
+                            cmdUpdate.Parameters.AddWithValue("@obs", observacionSeleccionada);
+
+                        thisConnection.Open();
+                        cmdUpdate.ExecuteNonQuery();
+                        thisConnection.Close();
+                    }
+
+                    Toast.MakeText(this, "DATOS GRABADOS CON EXITO", ToastLength.Long).Show();
+
+                    // Actualizar la lista de trailers en el Spinner (código original)
+                    thisConnection.Open();
+                    string Cadena = "Select Count(NO_TRAILER) From tb_mstr_trailer Where guardar = 'N'  AND Anden = '" + AndenValidar + "'";
+                    SqlCommand cmdx = new SqlCommand(Cadena, thisConnection);
+                    string valor = Convert.ToString(cmdx.ExecuteScalar());
+                    strTrailerx = new System.String[Convert.ToInt32(valor) + 1];
+                    strTrailerx[0] = "";
+                    thisConnection.Close();
+                    int x = 1;
+                    thisConnection.Open();
+                    cadena = "Select NO_TRAILER From tb_mstr_trailer Where guardar = 'N' AND Anden = '" + AndenValidar + "' order by NO_TRAILER";
+                    cmd = new SqlCommand(cadena);
+                    cmd.Connection = thisConnection;
+                    Info = cmd.ExecuteReader();
+                    while (Info.Read())
+                    {
+                        strTrailerx[x] = Info["NO_TRAILER"].ToString().Trim();
+                        x++;
+                    }
+                    thisConnection.Close();
+                    Collections.AddAll(listadetrailer, strTrailerx);
+                    numtrail.Adapter = null;
+                    comboAdapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleSpinnerItem, strTrailerx);
+                    numtrail.Adapter = comboAdapter;
+                    numtrail.ItemSelected += new EventHandler<AdapterView.ItemSelectedEventArgs>(spinner_Trailer);
+
+                    if (AndenValidar != "99")
+                    {
+                        Nuevo();
+                    }
+                    cargarInfoTrailer();
+                });
+
+                return;  // Importante: salir del evento para no ejecutar el código antiguo
+            }
+
+            // Código que sigue para cuando status == "A" (apertura) - ya se ejecutó arriba en ese caso.
+            thisConnection.Open();
+            string Cadena2 = "Select Count(NO_TRAILER) From tb_mstr_trailer Where guardar = 'N'  AND Anden = '" + AndenValidar + "'";
+            SqlCommand cmdx2 = new SqlCommand(Cadena2, thisConnection);
+            string valor2 = Convert.ToString(cmdx2.ExecuteScalar());
+            strTrailerx = new System.String[Convert.ToInt32(valor2) + 1];
+            strTrailerx[0] = "";
+            thisConnection.Close();
+            int x2 = 1;
+            thisConnection.Open();
+            cadena = "Select NO_TRAILER From tb_mstr_trailer Where guardar = 'N' AND Anden = '" + AndenValidar + "' order by NO_TRAILER";
+            cmd = new SqlCommand(cadena);
+            cmd.Connection = thisConnection;
+            Info = cmd.ExecuteReader();
+            while (Info.Read())
+            {
+                strTrailerx[x2] = Info["NO_TRAILER"].ToString().Trim();
+                x2++;
+            }
+            thisConnection.Close();
+            Collections.AddAll(listadetrailer, strTrailerx);
+            numtrail.Adapter = null;
+            comboAdapter = new ArrayAdapter<string>(this, Android.Resource.Layout.SimpleSpinnerItem, strTrailerx);
+            numtrail.Adapter = comboAdapter;
+            numtrail.ItemSelected += new EventHandler<AdapterView.ItemSelectedEventArgs>(spinner_Trailer);
+            if (AndenValidar != "99")
+            {
+                Nuevo();
+            }
             cargarInfoTrailer();
         }
 
