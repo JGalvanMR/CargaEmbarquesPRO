@@ -8794,29 +8794,31 @@ namespace CargaEmbarques
         private void MostrarDialogoObservacionesSiAplica(string folioEmbarque, Action<string> onGuardar)
         {
             bool masde6Horas = false;
-            bool despues12am = false;
+            bool horarioPosteriorAlCorte = false;
 
-            // ── Condición 2: hora actual entre 00:00 y 05:59 (madrugada) ─────────
-            int horaActual = DateTime.Now.Hour;
-            despues12am = (horaActual >= 0 && horaActual < 6);
+            // ── Obtener hora y minuto actuales ─────────────────────────────
+            DateTime ahora = DateTime.Now;
+            int horaActual = ahora.Hour;
+            int minutoActual = ahora.Minute;
 
-            // ── Condición 1: más de 6 horas en planta (desde registro de vigilancia) ────────────────────────────
+            // ── Nueva condición: desde las 23:40 hasta las 05:59 ────────────
+            horarioPosteriorAlCorte = (horaActual == 23 && minutoActual >= 40) || (horaActual >= 0 && horaActual < 6);
+
+            // ── Condición 1: más de 6 horas en planta (desde registro de vigilancia) ──
             try
             {
                 if (thisConnection.State == ConnectionState.Closed)
                     thisConnection.Open();
 
-                // Se une tb_mstr_embarque con tb_mstr_trailer via pdn_folio = emb_folio
-                // y se toma HoraRegVig que es char(5) en formato HH:mm
                 string sqlHoraVig =
                     @"SELECT TOP 1 t.HoraRegVig
-FROM tb_mstr_trailer t
-INNER JOIN tb_mstr_embarque e 
-    ON CAST(e.emb_folio AS INT) = CAST(t.pdn_folio AS INT) -- Convertimos ambos a enteros
-WHERE CAST(e.emb_folio AS INT) = @folio
-  AND t.HoraRegVig IS NOT NULL
-  AND LTRIM(RTRIM(t.HoraRegVig)) != ''
-ORDER BY t.fecha DESC";
+              FROM tb_mstr_trailer t
+              INNER JOIN tb_mstr_embarque e 
+                  ON CAST(e.emb_folio AS INT) = CAST(t.pdn_folio AS INT)
+              WHERE CAST(e.emb_folio AS INT) = @folio
+                AND t.HoraRegVig IS NOT NULL
+                AND LTRIM(RTRIM(t.HoraRegVig)) != ''
+              ORDER BY t.fecha DESC";
 
                 using (SqlCommand cmd = new SqlCommand(sqlHoraVig, thisConnection))
                 {
@@ -8827,26 +8829,12 @@ ORDER BY t.fecha DESC";
                     {
                         string horaStr = resultado.ToString().Trim();
 
-                        // HoraRegVig es char(5) → formato "HH:mm" (ej. "08:30", "23:45")
-                        bool parsed = DateTime.TryParseExact(
-                            horaStr,
-                            new[] { "HH:mm", "H:mm" },
-                            System.Globalization.CultureInfo.InvariantCulture,
-                            System.Globalization.DateTimeStyles.None,
-                            out DateTime horaEntrada
-                        );
-
-                        if (parsed)
+                        if (DateTime.TryParseExact(horaStr, new[] { "HH:mm", "H:mm" },
+                                System.Globalization.CultureInfo.InvariantCulture,
+                                System.Globalization.DateTimeStyles.None, out DateTime horaEntrada))
                         {
-                            // hora_ini solo tiene hora/minuto → combinar con la fecha de hoy
-                            DateTime ahora = DateTime.Now;
-                            DateTime entradaHoy = new DateTime(
-                                ahora.Year, ahora.Month, ahora.Day,
-                                horaEntrada.Hour, horaEntrada.Minute, 0
-                            );
-
-                            // Si la hora de entrada es mayor que ahora, el trailer
-                            // entró el día anterior (cruzó medianoche)
+                            DateTime entradaHoy = new DateTime(ahora.Year, ahora.Month, ahora.Day,
+                                                                horaEntrada.Hour, horaEntrada.Minute, 0);
                             if (entradaHoy > ahora)
                                 entradaHoy = entradaHoy.AddDays(-1);
 
@@ -8859,23 +8847,18 @@ ORDER BY t.fecha DESC";
                         }
                         else
                         {
-                            // Parse fallido → NO activar la condición (evita falsos positivos)
-                            Android.Util.Log.Warn("CargaEmbarques",
-                                $"No se pudo parsear hora_ini: '{horaStr}' — condición >6h ignorada.");
+                            Android.Util.Log.Warn("CargaEmbarques", $"No se pudo parsear hora_ini: '{horaStr}'");
                         }
                     }
                     else
                     {
-                        // No se encontró registro de vigilancia para este folio
-                        Android.Util.Log.Warn("CargaEmbarques",
-                            $"Sin registro de vigilancia para folio '{folioEmbarque}' — condición >6h ignorada.");
+                        Android.Util.Log.Warn("CargaEmbarques", $"Sin registro de vigilancia para folio '{folioEmbarque}'");
                     }
                 }
             }
             catch (Java.Lang.Exception ex)
             {
-                Toast.MakeText(this, "Error al verificar hora de entrada: " + ex.Message,
-                               ToastLength.Long).Show();
+                Toast.MakeText(this, "Error al verificar hora de entrada: " + ex.Message, ToastLength.Long).Show();
             }
             finally
             {
@@ -8883,27 +8866,25 @@ ORDER BY t.fecha DESC";
                     thisConnection.Close();
             }
 
-            // ── Si ninguna condición aplica → guardar directo ─────────────────────
-            if (!masde6Horas && !despues12am)
+            // ── Si ninguna condición aplica → guardar directo ─────────────────────────
+            if (!masde6Horas && !horarioPosteriorAlCorte)
             {
                 onGuardar?.Invoke(string.Empty);
                 return;
             }
 
-            // ── Cargar catálogo de observaciones desde SQL Server ─────────────────
+            // ── Cargar catálogo de observaciones desde SQL Server ─────────────────────
             var listaObservaciones = new List<string>();
-
             try
             {
                 if (thisConnection.State == ConnectionState.Closed)
                     thisConnection.Open();
 
-                string sqlObs =
-                    @"SELECT obs_descripcion 
-              FROM tb_cat_observaciones
-              WHERE obs_activo = 'S'
-                AND (obs_sistema = 'CargaEmbarques' OR obs_sistema IS NULL)
-              ORDER BY obs_descripcion";
+                string sqlObs = @"SELECT obs_descripcion 
+                          FROM tb_cat_observaciones
+                          WHERE obs_activo = 'S'
+                            AND (obs_sistema = 'CargaEmbarques' OR obs_sistema IS NULL)
+                          ORDER BY obs_descripcion";
 
                 using (SqlCommand cmd = new SqlCommand(sqlObs, thisConnection))
                 using (SqlDataReader reader = cmd.ExecuteReader())
@@ -8914,8 +8895,7 @@ ORDER BY t.fecha DESC";
             }
             catch (Java.Lang.Exception ex)
             {
-                Toast.MakeText(this, "Error al cargar observaciones: " + ex.Message,
-                               ToastLength.Long).Show();
+                Toast.MakeText(this, "Error al cargar observaciones: " + ex.Message, ToastLength.Long).Show();
             }
             finally
             {
@@ -8923,19 +8903,19 @@ ORDER BY t.fecha DESC";
                     thisConnection.Close();
             }
 
-            // ── Construir la vista del diálogo ────────────────────────────────────
+            // ── Construir la vista del diálogo ────────────────────────────────────────
             LinearLayout layout = new LinearLayout(this)
             {
                 Orientation = Orientation.Vertical
             };
             layout.SetPadding(48, 24, 48, 8);
 
-            // Mensaje descriptivo según la condición detectada
-            string motivoCondicion = (masde6Horas && despues12am)
-                ? "El trailer lleva más de 6 horas en planta y la salida es después de las 12:00 a.m."
+            // Mensaje actualizado según la condición detectada
+            string motivoCondicion = (masde6Horas && horarioPosteriorAlCorte)
+                ? "El trailer lleva más de 6 horas en planta y la salida es después de las 11:40 p.m."
                 : masde6Horas
                     ? "El trailer lleva más de 6 horas en planta."
-                    : "La salida del trailer es después de las 12:00 a.m.";
+                    : "La salida del trailer es después de las 11:40 p.m.";
 
             TextView tvMensaje = new TextView(this);
             tvMensaje.Text = motivoCondicion;
@@ -8962,7 +8942,7 @@ ORDER BY t.fecha DESC";
             spinner.Adapter = adapter;
             layout.AddView(spinner);
 
-            // ── Mostrar AlertDialog ───────────────────────────────────────────────
+            // ── Mostrar AlertDialog ───────────────────────────────────────────────────
             AlertDialog.Builder dialogObs = new AlertDialog.Builder(this);
             dialogObs.SetTitle(
                 Html.FromHtml("<font color='#DF0101' size='10'><b>CERRAR EMBARQUE CON OBSERVACIONES</b></font>")
@@ -8977,17 +8957,14 @@ ORDER BY t.fecha DESC";
                 {
                     if (listaObservaciones.Count == 0)
                     {
-                        Toast.MakeText(this, "No hay observaciones disponibles en el catálogo.",
-                                       ToastLength.Long).Show();
+                        Toast.MakeText(this, "No hay observaciones disponibles en el catálogo.", ToastLength.Long).Show();
                         return;
                     }
 
                     string observacionSeleccionada = spinner.SelectedItem?.ToString() ?? string.Empty;
-
                     if (string.IsNullOrWhiteSpace(observacionSeleccionada))
                     {
-                        Toast.MakeText(this, "Debe seleccionar una observación antes de continuar.",
-                                       ToastLength.Long).Show();
+                        Toast.MakeText(this, "Debe seleccionar una observación antes de continuar.", ToastLength.Long).Show();
                         return;
                     }
 
@@ -8997,7 +8974,7 @@ ORDER BY t.fecha DESC";
 
             dialogObs.SetNegativeButton(
                 Html.FromHtml("<font color='#DF0101'>Cancelar</font>"),
-                (senderObs, argsObs) => { /* el usuario canceló, no se guarda nada */ }
+                (senderObs, argsObs) => { /* cancelado, no se guarda nada */ }
             );
 
             dialogObs.Show();
