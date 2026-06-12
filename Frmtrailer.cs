@@ -2704,7 +2704,7 @@ namespace CargaEmbarques
             layout.AddView(spinner);
 
             // ── Mostrar AlertDialog ───────────────────────────────────────────────────
-            AndroidX.AppCompat.App.AlertDialog.Builder dialogObs = new AndroidX.AppCompat.App.AlertDialog.Builder(this);
+            Android.App.AlertDialog.Builder dialogObs = new Android.App.AlertDialog.Builder(this);
             dialogObs.SetTitle(
                 Html.FromHtml("<font color='#DF0101' size='10'><b>CERRAR EMBARQUE CON OBSERVACIONES</b></font>")
             );
