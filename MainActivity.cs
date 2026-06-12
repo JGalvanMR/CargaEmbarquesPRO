@@ -92,6 +92,9 @@ namespace CargaEmbarques
         private const int RequestPermissionsCode = 1;
 
         private TeamsNotifier notiTeams;
+        private bool _pendingLoginAfterPermissions = false;
+        private bool _pendingLogin = false;
+        private readonly int LOGIN_PERMISSION_REQUEST = 100;  // Código único para login
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -102,7 +105,7 @@ namespace CargaEmbarques
             SetContentView(Resource.Layout.activity_main);
 
             // Solicitar permisos necesarios
-            RequestNecessaryPermissions();
+            //RequestNecessaryPermissions();
 
             // Solicitar permiso especial para almacenamiento externo
             //RequestManageExternalStoragePermission();
@@ -377,20 +380,40 @@ namespace CargaEmbarques
         {
             base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
 
-            if (requestCode == RequestPermissionsCode)
+            if (requestCode == LOGIN_PERMISSION_REQUEST && _pendingLogin)
             {
-                for (int i = 0; i < permissions.Length; i++)
+                // Misma lista de permisos que se pidieron (para verificar si todos están concedidos)
+                var required = new List<string>
+        {
+            Manifest.Permission.Camera,
+            Manifest.Permission.AccessCoarseLocation,
+            Manifest.Permission.AccessFineLocation
+        };
+
+                if (Build.VERSION.SdkInt < BuildVersionCodes.Tiramisu)
                 {
-                    if (grantResults[i] == Permission.Granted)
-                    {
-                        // Permiso concedido
-                        Toast.MakeText(this, $"{permissions[i]} concedido", ToastLength.Short).Show();
-                    }
-                    else
-                    {
-                        // Permiso denegado
-                        Toast.MakeText(this, $"{permissions[i]} denegado", ToastLength.Short).Show();
-                    }
+                    required.Add(Manifest.Permission.ReadExternalStorage);
+                    required.Add(Manifest.Permission.WriteExternalStorage);
+                }
+
+                bool allGranted = required.All(p =>
+                    ContextCompat.CheckSelfPermission(this, p) == Permission.Granted);
+
+                _pendingLogin = false;
+
+                if (allGranted)
+                {
+                    Logeo();
+                }
+                else
+                {
+                    var denied = required.Where(p =>
+                        ContextCompat.CheckSelfPermission(this, p) != Permission.Granted).ToList();
+                    new Android.App.AlertDialog.Builder(this)
+                        .SetTitle("Permisos requeridos")
+                        .SetMessage($"La aplicación necesita:\n{string.Join("\n", denied)}\n\nPor favor, actívalos desde Configuración.")
+                        .SetPositiveButton("Aceptar", (_, __) => { })
+                        .Show();
                 }
             }
         }
@@ -436,29 +459,33 @@ namespace CargaEmbarques
 
         void Btnlogin_Click(object sender, EventArgs e)
         {
+            // Permisos que SIEMPRE se piden (funcionan en todas las versiones)
+            var requiredPermissions = new List<string>
+    {
+        Manifest.Permission.Camera,
+        Manifest.Permission.AccessCoarseLocation,
+        Manifest.Permission.AccessFineLocation
+    };
 
-            System.String[] opciones = new System.String[] {
-                Manifest.Permission.AccessCoarseLocation,
-                Manifest.Permission.AccessFineLocation,
-                Manifest.Permission.Camera,
-                Manifest.Permission.ReadExternalStorage,
-                Manifest.Permission.WriteExternalStorage
-            };
-
-            var xs = ContextCompat.CheckSelfPermission(this, Manifest.Permission.Camera);
-
-
-            if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.AccessCoarseLocation) == (int)Android.Content.PM.Permission.Granted &&
-                ContextCompat.CheckSelfPermission(this, Manifest.Permission.AccessFineLocation) == (int)Android.Content.PM.Permission.Granted &&
-                ContextCompat.CheckSelfPermission(this, Manifest.Permission.Camera) == (int)Android.Content.PM.Permission.Granted &&
-                ContextCompat.CheckSelfPermission(this, Manifest.Permission.ReadExternalStorage) == (int)Android.Content.PM.Permission.Granted &&
-                ContextCompat.CheckSelfPermission(this, Manifest.Permission.WriteExternalStorage) == (int)Android.Content.PM.Permission.Granted)
+            // Solo en Android 12 o inferior agregamos los de almacenamiento
+            if (Build.VERSION.SdkInt < BuildVersionCodes.Tiramisu) // API < 33
             {
-                Logeo();
+                requiredPermissions.Add(Manifest.Permission.ReadExternalStorage);
+                requiredPermissions.Add(Manifest.Permission.WriteExternalStorage);
+            }
+
+            var missingPermissions = requiredPermissions
+                .Where(p => ContextCompat.CheckSelfPermission(this, p) != Permission.Granted)
+                .ToArray();
+
+            if (missingPermissions.Any())
+            {
+                _pendingLogin = true;
+                ActivityCompat.RequestPermissions(this, missingPermissions, LOGIN_PERMISSION_REQUEST);
             }
             else
             {
-                ActivityCompat.RequestPermissions(this, opciones, 1);
+                Logeo();
             }
         }
 
@@ -863,6 +890,19 @@ namespace CargaEmbarques
         protected override void OnPause()
         {
             base.OnPause();
+        }
+
+        protected override void OnSaveInstanceState(Bundle outState)
+        {
+            base.OnSaveInstanceState(outState);
+            outState.PutBoolean("pending_login", _pendingLogin);
+        }
+
+        protected override void OnRestoreInstanceState(Bundle savedInstanceState)
+        {
+            base.OnRestoreInstanceState(savedInstanceState);
+            if (savedInstanceState != null)
+                _pendingLogin = savedInstanceState.GetBoolean("pending_login", false);
         }
     }
 }
