@@ -12,7 +12,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>CargaEmbarques</RootNamespace>
     <AssemblyName>CargaEmbarques</AssemblyName>
-	  <LangVersion>latest</LangVersion>
+    <LangVersion>latest</LangVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>True</Deterministic>
     <AndroidApplication>True</AndroidApplication>
@@ -99,6 +99,7 @@
     <Compile Include="DetalleSplit.cs" />
     <Compile Include="Frmtrailer.cs" />
     <Compile Include="Modal\PesoItem.cs" />
+    <Compile Include="Models\AtuModels.cs" />
     <Compile Include="PesoAdapter.cs" />
     <Compile Include="PesoXejes.cs" />
     <Compile Include="GuardarLocal.cs" />
@@ -108,6 +109,7 @@
     <Compile Include="PesoXEjesFragment2.cs" />
     <Compile Include="PesoXEjesFragment.cs" />
     <Compile Include="Services\ATUService.cs" />
+    <Compile Include="Services\ATUServices.cs" />
     <Compile Include="subirFoto.cs" />
     <Compile Include="MainActivity.cs" />
     <Compile Include="Resources\Resource.designer.cs" />
@@ -198,6 +200,9 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json">
       <Version>13.0.3</Version>
+    </PackageReference>
+    <PackageReference Include="Newtonsoft.Json.Bson">
+      <Version>1.0.3</Version>
     </PackageReference>
     <PackageReference Include="System.Net.Http">
       <Version>4.3.4</Version>
