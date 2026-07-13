@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          android:versionCode="73"
-          android:versionName="7.9.2"
+          android:versionCode="76"
+          android:versionName="7.9.5"
           package="CargaEmbarques.CargaEmbarques">
 	<uses-sdk android:minSdkVersion="22" android:targetSdkVersion="33" />
 	<application

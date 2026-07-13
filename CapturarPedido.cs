@@ -196,7 +196,8 @@ namespace CargaEmbarques
         private TeamsNotifier notiTeams;
 
         // Reemplaza la inicialización con tipo de destino (C# 9.0+) por la sintaxis compatible con C# 8.0
-        private readonly CargaEmbarques.Services.ATUService _atuService = new CargaEmbarques.Services.ATUService();
+        private readonly CargaEmbarques.Services.ATUServices _atuService = new CargaEmbarques.Services.ATUServices();
+        private readonly CargaEmbarques.Services.ATUService _atuServices = new CargaEmbarques.Services.ATUService();
         #endregion
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -2269,15 +2270,18 @@ namespace CargaEmbarques
                     }
                     else
                     {
-                        //Mfeca = ConviertetoFecha(row["NUM_LOTE"].ToString().Substring((Mtam == 12) ? 7 : 6, 5));
-                        string numLote = row["NUM_LOTE"].ToString();
-                        int inicio = (Mtam == 12) ? 7 : 6;
-                        int longitud = 5;
+                        string numLote = row["NUM_LOTE"].ToString().Trim();
 
-                        if (numLote.Length >= inicio + longitud)
+                        if (numLote.Length == 5 && numLote[2] == '-')
+                            Mfeca = numLote.Substring(0, 2) + "/" + FecCad.ToString("MM") + "/" + FecCad.ToString("yyyy");
+                        else if (numLote.Length >= 5)
                         {
-                            Mfeca = ConviertetoFecha(numLote.Substring(inicio, longitud));
+                            string last5 = numLote.Substring(numLote.Length - 5);
+                            if (char.IsLetter(last5[0]) && char.IsLetter(last5[1]) && char.IsLetter(last5[2]) &&
+                                char.IsDigit(last5[3]) && char.IsDigit(last5[4]))
+                                Mfeca = ConviertetoFecha(last5);
                         }
+
                     }
 
                     DateTime fechaConvertida;
@@ -2312,7 +2316,6 @@ namespace CargaEmbarques
                             InputMethodManager imm = (InputMethodManager)GetSystemService(Context.InputMethodService);
                             imm.ShowSoftInput(codigoetiqueta, ShowFlags.Implicit);
                             if (thisConnection.State == ConnectionState.Open) { thisConnection.Close(); }
-                            return;
                         });
                         alertcaducidad.Show();
                     }
@@ -9107,9 +9110,6 @@ namespace CargaEmbarques
         #endregion
         #endregion
 
-        #region ATU FUSIONADO (Robusto + Diseño XML)
-
-        #endregion
 
         // ── PASO 1: Mostrar dialog de MOTIVO antes de enviar la solicitud ─────────────
         // Llama esto DONDE ANTES mostraba el dialog de contraseña (botón "Autorizar"):
@@ -9176,8 +9176,170 @@ namespace CargaEmbarques
                 });
             });
         }
-
         private void EjecutarFlujoOTP(
+    string motivo, string folioLeido, string fechaLeido,
+    string folioAtrasado, string fechaAtrasada,
+    string productocve, string producto,
+    string cajasDisp, string tarimaLeido, string tarimaAtrasada)
+        {
+            var responsableCorto = responsable.Trim().Length > 25
+                ? responsable.Trim()[..25]
+                : responsable.Trim();
+
+            // 1. Disparar la solicitud (fire & forget, pero con manejo de error simple)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _atuService.CrearSolicitudAsync(
+                        embFolio: pedido.Text.Trim(),
+                        reciboCap: folioLeido.Trim(),
+                        reciboSug: folioAtrasado.Trim(),
+                        fechaRecCap: fechaLeido,
+                        fechaRecSug: fechaAtrasada,
+                        prodClave: productocve.Trim(),
+                        producto: producto.Trim(),
+                        cantidad: cajasDisp.Trim(),
+                        tarimaCap: tarimaLeido.Trim(),
+                        tarimaSug: tarimaAtrasada.Trim(),
+                        responsable: responsableCorto,
+                        motivo: motivo,
+                        imei: imei.Trim());
+                }
+                catch (Java.Lang.Exception ex)
+                {
+                    RunOnUiThread(() =>
+                        Toast.MakeText(this, "Error al enviar solicitud: " + ex.Message, ToastLength.Short).Show());
+                }
+            });
+
+            // 2. Mostrar diálogo de OTP
+            var inflater = LayoutInflater.From(this);
+            var view = inflater.Inflate(Resource.Layout.dialog_atu_otp, null);
+            if (view == null)
+            {
+                Toast.MakeText(this, "Error: No se encontró dialog_atu_otp.xml", ToastLength.Long).Show();
+                return;
+            }
+
+            var lblInfo = view.FindViewById<TextView>(Resource.Id.lblAtuInfo);
+            var txtOTP = view.FindViewById<EditText>(Resource.Id.txtAtuOtp);
+            var lblEstado = view.FindViewById<TextView>(Resource.Id.lblAtuEstado);
+
+            if (txtOTP == null || lblEstado == null)
+            {
+                Toast.MakeText(this, "Error crítico: Faltan IDs en dialog_atu_otp.xml", ToastLength.Long).Show();
+                return;
+            }
+
+            lblInfo.Text = $"Folio: {pedido.Text.Trim()}\n" +
+                           $"Producto: {productocve} — {producto}\n" +
+                           $"Recibo: {folioLeido}  |  Tarima: {tarimaLeido}\n\n" +
+                           "Espera el código OTP del supervisor.";
+
+            txtOTP.InputType = Android.Text.InputTypes.ClassNumber;
+
+            var builder = new Android.App.AlertDialog.Builder(this);
+            builder.SetView(view);
+            builder.SetCancelable(false);
+
+            Android.App.AlertDialog dialog = null;
+            builder.SetPositiveButton("✓ VALIDAR OTP", (Android.Content.IDialogInterfaceOnClickListener)null);
+            builder.SetNegativeButton("✕ CANCELAR", (s, e) => { Borrar(); dialog?.Dismiss(); });
+
+            dialog = builder.Create();
+            dialog.Show();
+
+            var btnValidar = dialog.GetButton((int)Android.Content.DialogButtonType.Positive);
+            if (btnValidar == null) return;
+
+            btnValidar.Click += async (s, e) =>
+            {
+                try
+                {
+                    var otp = txtOTP.Text.Trim();
+
+                    if (otp.Length != 6)
+                    {
+                        lblEstado.Text = "⚠️ El OTP deben ser 6 dígitos";
+                        lblEstado.SetTextColor(Android.Graphics.Color.Orange);
+                        return;
+                    }
+
+                    btnValidar.Enabled = false;
+                    lblEstado.Text = "⏳ Validando con el servidor...";
+                    lblEstado.SetTextColor(Android.Graphics.Color.Gray);
+
+                    // ✅ Llamada corregida (sin supervisorId)
+                    var resultado = await _atuService.ValidarOTPAsync(
+                        embFolio: pedido.Text.Trim(),
+                        otp: otp,
+                        supervisorId: responsableCorto,
+                        prodClave: productocve.Trim(),
+                        reciboCap: folioLeido.Trim(),   // El que FIFO dice que debe salir (cap = leído)
+                        tarimaCap: tarimaLeido.Trim(),
+                        claimedProdClave: productocve.Trim(),          // mismo producto
+                        claimedReciboSug: folioAtrasado.Trim(),        // el recibo adelantado
+                        claimedTarimaSug: tarimaAtrasada.Trim()
+                    );
+
+                    // ✅ Usar propiedades de AtuValidateFolioResponse
+                    bool isValid = resultado.IsAuthorized;
+                    string supId = resultado.SupervisorId ?? "";
+                    string mensaje = resultado.Message ?? "";
+
+                    if (isValid)
+                    {
+                        // El backend ya actualizó el registro, aquí no hacemos INSERT
+                        mAutoriza = supId;   // Guardamos quién autorizó (para uso local si lo necesitas)
+
+                        lblEstado.Text = "✓ Autorización válida";
+                        lblEstado.SetTextColor(Android.Graphics.Color.ParseColor("#00AA44"));
+                        await Task.Delay(1000);
+                        dialog.Dismiss();
+
+                        // Aquí puedes continuar con el proceso de carga, 
+                        // por ejemplo, actualizar la UI y permitir el embarque.
+                    }
+                    else
+                    {
+                        btnValidar.Enabled = true;
+
+                        // Color según status (opcional, pero útil)
+                        Android.Graphics.Color color = resultado.Status switch
+                        {
+                            "Green" => Android.Graphics.Color.ParseColor("#00AA44"),
+                            "Yellow" => Android.Graphics.Color.ParseColor("#FFA500"),
+                            "Red" => Android.Graphics.Color.Red,
+                            _ => Android.Graphics.Color.Gray
+                        };
+
+                        lblEstado.Text = mensaje;
+                        lblEstado.SetTextColor(color);
+
+                        if (mensaje.Contains("FRAUDE"))
+                        {
+                            new Android.App.AlertDialog.Builder(this)
+                                .SetTitle("🚨 FRAUDE DETECTADO")
+                                .SetMessage($"El intento queda registrado.\n\n{mensaje}")
+                                .SetNeutralButton("ENTENDIDO", (s2, e2) => { })
+                                .SetCancelable(false)
+                                .Show();
+                        }
+
+                        txtOTP.Text = "";
+                        txtOTP.RequestFocus();
+                    }
+                }
+                catch (Java.Lang.Exception ex)
+                {
+                    btnValidar.Enabled = true;
+                    lblEstado.Text = $"❌ Error: {ex.Message}";
+                    lblEstado.SetTextColor(Android.Graphics.Color.Red);
+                }
+            };
+        }
+        private void EjecutarFlujoOTPOG(
             string motivo, string folioLeido, string fechaLeido,
             string folioAtrasado, string fechaAtrasada,
             string productocve, string producto,
@@ -9242,7 +9404,7 @@ namespace CargaEmbarques
                     lblEstado.SetTextColor(Android.Graphics.Color.Gray);
 
                     // ✅ MANDAMIENTO 2: Se envía el IMEI como DeviceFingerprint (El backend lo exige)
-                    var resultado = await _atuService.ValidarOTPAsync(
+                    var resultado = await _atuServices.ValidarOTPAsync(
                         otp: otp,
                         embFolio: pedido.Text.Trim(),
                         prodClave: productocve.Trim(),
@@ -9459,7 +9621,7 @@ namespace CargaEmbarques
 
                     try
                     {
-                        var resultado = await _atuService.ValidarOTPAsync(
+                        var resultado = await _atuServices.ValidarOTPAsync(
                             otp: otp,
                             embFolio: pedido.Text.Trim(),
                             prodClave: productocve.Trim(),

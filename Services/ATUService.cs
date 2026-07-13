@@ -14,7 +14,7 @@ namespace CargaEmbarques.Services
     {
         private readonly HttpClient _http;
         //private const string ATU_URL = "http://192.168.123.155:5059"; // Tu IP del servidor ATU
-        private const string ATU_URL = "http://192.168.123.155:5059"; // Tu IP del servidor ATU
+        private const string ATU_URL = "http://192.168.123.155:5002"; // Tu IP del servidor ATU
 
         public ATUService()
         {
@@ -75,12 +75,12 @@ namespace CargaEmbarques.Services
         /// Valida el OTP que dictó el supervisor de cámaras frías.
         /// </summary>
         public async Task<(bool IsValid, string SupervisorId, string Mensaje)> ValidarOTPAsync(
-    string otp,
-    string embFolio,
-    string prodClave,
-    string reciboCap,
-    string tarimaCap,
-    string responsable) // Ya no lo usamos para el JSON, pero lo dejamos por si lo necesitas para el INSERT
+            string otp,
+            string embFolio,
+            string prodClave,
+            string reciboCap,
+            string tarimaCap,
+            string responsable) // Ya no lo usamos para el JSON, pero lo dejamos por si lo necesitas para el INSERT
         {
             try
             {
