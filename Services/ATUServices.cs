@@ -10,7 +10,8 @@ namespace CargaEmbarques.Services
     public class ATUServices
     {
         private readonly HttpClient _http;
-        private const string ATU_URL = "http://atu-web.int.mrlucky.com/auth";
+        private const string ATU_URL = "http://192.168.123.244:83/auth";
+        //private const string ATU_URL = "http://atu-web.int.mrlucky.com/auth";
         //private const string ATU_URL = "http://192.168.123.155:5002"; // Ajusta según tu entorno
         //private const string ATU_URL = "http://192.168.123.155:5049"; // Ajusta según tu entorno
 
@@ -143,7 +144,7 @@ namespace CargaEmbarques.Services
             string supervisorId,
             string prodClave,
             string reciboCap,
-            string tarimaCap, 
+            string tarimaCap,
             string claimedProdClave,   // la del adelanto
             string claimedReciboSug,   // la del adelanto
             string claimedTarimaSug)
