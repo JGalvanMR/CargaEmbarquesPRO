@@ -198,6 +198,14 @@ namespace CargaEmbarques
         // Reemplaza la inicialización con tipo de destino (C# 9.0+) por la sintaxis compatible con C# 8.0
         private readonly CargaEmbarques.Services.ATUServices _atuService = new CargaEmbarques.Services.ATUServices();
         private readonly CargaEmbarques.Services.ATUService _atuServices = new CargaEmbarques.Services.ATUService();
+
+        private SignalRService _signalRService;
+        private Android.App.AlertDialog _otpDialog;
+        private EditText _txtOTP;
+        private TextView _lblEstado;
+        private TextView _lblInfo;
+        private Button _btnValidar;
+        private string _embFolioActual;
         #endregion
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -2051,6 +2059,29 @@ namespace CargaEmbarques
             SetActionBar(toolbar);
             ActionBar.Title = "Capturar Pedido";
             updatePesoPorEjes(Notrailer.Text, fecha.Text, "", "", "", "", pedido.Text);
+
+            #region ATU SignalR
+            // Inicializar SignalR UNA SOLA VEZ al abrir la pantalla
+            if (_signalRService == null)
+            {
+                var baseUrl = "http://192.168.123.244:83/auth";
+                _signalRService = new SignalRService(baseUrl);
+                _signalRService.OnFolioAutorizado += OnFolioAutorizadoHandler; // Suscribirse
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _signalRService.StartAsync();
+                    }
+                    catch (Java.Lang.Exception ex)
+                    {
+                        RunOnUiThread(() =>
+                            Toast.MakeText(this, $"Error SignalR: {ex.Message}", ToastLength.Long).Show());
+                    }
+                });
+            }
+            #endregion
 
         }
 
@@ -7989,6 +8020,21 @@ namespace CargaEmbarques
                 {
                     locationManager.RemoveUpdates(this);
                 }
+
+                // Cancelar suscripción y destruir SignalR
+                if (_signalRService != null)
+                {
+                    _signalRService.OnFolioAutorizado -= OnFolioAutorizadoHandler;
+                    _signalRService.Dispose();
+                    _signalRService = null;
+                }
+
+                // Cerrar diálogo si la actividad se destruye y el diálogo estaba abierto
+                if (_otpDialog != null)
+                {
+                    _otpDialog.Dismiss();
+                    _otpDialog = null;
+                }
             }
             catch (Java.Lang.Exception ex)
             {
@@ -9108,8 +9154,8 @@ namespace CargaEmbarques
             builder.Show();
         }
         #endregion
-        #endregion
 
+        #region Nuevo flujo ATU con dialogo de motivo
 
         // ── PASO 1: Mostrar dialog de MOTIVO antes de enviar la solicitud ─────────────
         // Llama esto DONDE ANTES mostraba el dialog de contraseña (botón "Autorizar"):
@@ -9177,10 +9223,10 @@ namespace CargaEmbarques
             });
         }
         private void EjecutarFlujoOTP(
-    string motivo, string folioLeido, string fechaLeido,
-    string folioAtrasado, string fechaAtrasada,
-    string productocve, string producto,
-    string cajasDisp, string tarimaLeido, string tarimaAtrasada)
+            string motivo, string folioLeido, string fechaLeido,
+            string folioAtrasado, string fechaAtrasada,
+            string productocve, string producto,
+            string cajasDisp, string tarimaLeido, string tarimaAtrasada)
         {
             var responsableCorto = responsable.Trim().Length > 25
                 ? responsable.Trim()[..25]
@@ -9222,22 +9268,23 @@ namespace CargaEmbarques
                 return;
             }
 
-            var lblInfo = view.FindViewById<TextView>(Resource.Id.lblAtuInfo);
-            var txtOTP = view.FindViewById<EditText>(Resource.Id.txtAtuOtp);
-            var lblEstado = view.FindViewById<TextView>(Resource.Id.lblAtuEstado);
+            _lblInfo = view.FindViewById<TextView>(Resource.Id.lblAtuInfo);
+            _txtOTP = view.FindViewById<EditText>(Resource.Id.txtAtuOtp);
+            _lblEstado = view.FindViewById<TextView>(Resource.Id.lblAtuEstado);
 
-            if (txtOTP == null || lblEstado == null)
+            if (_txtOTP == null || _lblEstado == null)
             {
                 Toast.MakeText(this, "Error crítico: Faltan IDs en dialog_atu_otp.xml", ToastLength.Long).Show();
                 return;
             }
 
-            lblInfo.Text = $"Folio: {pedido.Text.Trim()}\n" +
+            _lblInfo.Text = $"Folio: {pedido.Text.Trim()}\n" +
                            $"Producto: {productocve} — {producto}\n" +
                            $"Recibo: {folioLeido}  |  Tarima: {tarimaLeido}\n\n" +
                            "Espera el código OTP del supervisor.";
 
-            txtOTP.InputType = Android.Text.InputTypes.ClassNumber;
+            _txtOTP.InputType = Android.Text.InputTypes.ClassNumber;
+            _txtOTP.Enabled = true;
 
             var builder = new Android.App.AlertDialog.Builder(this);
             builder.SetView(view);
@@ -9250,95 +9297,157 @@ namespace CargaEmbarques
             dialog = builder.Create();
             dialog.Show();
 
-            var btnValidar = dialog.GetButton((int)Android.Content.DialogButtonType.Positive);
-            if (btnValidar == null) return;
+            _btnValidar = dialog.GetButton((int)Android.Content.DialogButtonType.Positive);
+            if (_btnValidar == null) return;
 
-            btnValidar.Click += async (s, e) =>
+            _btnValidar.Click += async (s, e) =>
             {
-                try
-                {
-                    var otp = txtOTP.Text.Trim();
+                await ValidarOTPManual();
+            };
+        }
 
-                    if (otp.Length != 6)
+        private async Task ValidarOTPManual()
+        {
+            try
+            {
+                var otp = _txtOTP.Text.Trim();
+
+                if (otp.Length != 6)
+                {
+                    _lblEstado.Text = "⚠️ El OTP deben ser 6 dígitos";
+                    _lblEstado.SetTextColor(Android.Graphics.Color.Orange);
+                    return;
+                }
+
+                _btnValidar.Enabled = false;
+                _lblEstado.Text = "⏳ Validando con el servidor...";
+                _lblEstado.SetTextColor(Android.Graphics.Color.Gray);
+
+                var resultado = await _atuService.ValidarOTPAsync(
+                    embFolio: _embFolioActual,
+                    otp: otp,
+                    supervisorId: responsable.Trim().Length > 25 ? responsable.Trim()[..25] : responsable.Trim(),
+                    prodClave: Productocve.Trim(),
+                    reciboCap: FolioLeido.Trim(),
+                    tarimaCap: TarimaLeido.Trim(),
+                    claimedProdClave: Productocve.Trim(),
+                    claimedReciboSug: FolioAtrasado.Trim(),
+                    claimedTarimaSug: TarimaAtrasada.Trim()
+                );
+
+                if (resultado.IsAuthorized)
+                {
+                    mAutoriza = resultado.SupervisorId ?? "";
+                    _lblEstado.Text = "✓ Autorización válida";
+                    _lblEstado.SetTextColor(Android.Graphics.Color.ParseColor("#00AA44"));
+                    _txtOTP.Enabled = false;
+                    _btnValidar.Enabled = false;
+
+                    await Task.Delay(1000);
+                    _otpDialog?.Dismiss();
+                }
+                else
+                {
+                    _btnValidar.Enabled = true;
+                    var color = resultado.Status switch
                     {
-                        lblEstado.Text = "⚠️ El OTP deben ser 6 dígitos";
-                        lblEstado.SetTextColor(Android.Graphics.Color.Orange);
-                        return;
+                        "Green" => Android.Graphics.Color.ParseColor("#00AA44"),
+                        "Yellow" => Android.Graphics.Color.ParseColor("#FFA500"),
+                        "Red" => Android.Graphics.Color.Red,
+                        _ => Android.Graphics.Color.Gray
+                    };
+
+                    _lblEstado.Text = resultado.Message;
+                    _lblEstado.SetTextColor(color);
+
+                    if (resultado.Message.Contains("FRAUDE"))
+                    {
+                        new Android.App.AlertDialog.Builder(this)
+                            .SetTitle("🚨 FRAUDE DETECTADO")
+                            .SetMessage($"El intento queda registrado.\n\n{resultado.Message}")
+                            .SetNeutralButton("ENTENDIDO", (s2, e2) => { })
+                            .SetCancelable(false)
+                            .Show();
                     }
 
-                    btnValidar.Enabled = false;
-                    lblEstado.Text = "⏳ Validando con el servidor...";
-                    lblEstado.SetTextColor(Android.Graphics.Color.Gray);
+                    _txtOTP.Text = "";
+                    _txtOTP.RequestFocus();
+                }
+            }
+            catch (Java.Lang.Exception ex)
+            {
+                _btnValidar.Enabled = true;
+                _lblEstado.Text = $"❌ Error: {ex.Message}";
+                _lblEstado.SetTextColor(Android.Graphics.Color.Red);
+            }
+        }
+        #endregion
 
-                    // ✅ Llamada corregida (sin supervisorId)
-                    var resultado = await _atuService.ValidarOTPAsync(
-                        embFolio: pedido.Text.Trim(),
-                        otp: otp,
-                        supervisorId: responsableCorto,
-                        prodClave: productocve.Trim(),
-                        reciboCap: folioLeido.Trim(),   // El que FIFO dice que debe salir (cap = leído)
-                        tarimaCap: tarimaLeido.Trim(),
-                        claimedProdClave: productocve.Trim(),          // mismo producto
-                        claimedReciboSug: folioAtrasado.Trim(),        // el recibo adelantado
-                        claimedTarimaSug: tarimaAtrasada.Trim()
-                    );
-
-                    // ✅ Usar propiedades de AtuValidateFolioResponse
-                    bool isValid = resultado.IsAuthorized;
-                    string supId = resultado.SupervisorId ?? "";
-                    string mensaje = resultado.Message ?? "";
-
-                    if (isValid)
+        #region ATU SignalR Event Handler
+        // ✅ MANEJADOR ACTUALIZADO: Actualiza el diálogo en lugar de crear uno nuevo
+        private void OnFolioAutorizadoHandler(object sender, FolioAutorizadoEventArgs e)
+        {
+            RunOnUiThread(() =>
+            {
+                // Verificar si el folio autorizado es el que estamos procesando
+                if (!string.IsNullOrEmpty(_embFolioActual) && _embFolioActual == e.EmbFolio)
+                {
+                    // El folio actual fue autorizado remotamente
+                    if (_otpDialog != null && _otpDialog.IsShowing)
                     {
-                        // El backend ya actualizó el registro, aquí no hacemos INSERT
-                        mAutoriza = supId;   // Guardamos quién autorizó (para uso local si lo necesitas)
+                        // 1. Deshabilitar el campo OTP y el botón Validar
+                        if (_txtOTP != null)
+                        {
+                            _txtOTP.Enabled = false;
+                            _txtOTP.Text = "";
+                        }
+                        if (_btnValidar != null)
+                            _btnValidar.Enabled = false;
 
-                        lblEstado.Text = "✓ Autorización válida";
-                        lblEstado.SetTextColor(Android.Graphics.Color.ParseColor("#00AA44"));
-                        await Task.Delay(1000);
-                        dialog.Dismiss();
+                        // 2. Actualizar el estado visual
+                        if (_lblEstado != null)
+                        {
+                            _lblEstado.Text = $"✅ AUTORIZADO REMOTAMENTE por {e.SupervisorId}";
+                            _lblEstado.SetTextColor(Android.Graphics.Color.ParseColor("#00AA44"));
+                        }
 
-                        // Aquí puedes continuar con el proceso de carga, 
-                        // por ejemplo, actualizar la UI y permitir el embarque.
+                        // 3. Actualizar información adicional
+                        if (_lblInfo != null)
+                        {
+                            _lblInfo.Text += $"\n\n✅ Autorización remota confirmada a las {DateTime.Now:HH:mm:ss}";
+                        }
+
+                        // 4. Toast informativo
+                        Toast.MakeText(this, $"✅ Folio {e.EmbFolio} autorizado por {e.SupervisorId}", ToastLength.Long).Show();
+
+                        // 5. Cerrar diálogo automáticamente después de 2 segundos para agilizar
+                        _ = Task.Delay(2000).ContinueWith(_ =>
+                        {
+                            RunOnUiThread(() =>
+                            {
+                                _otpDialog?.Dismiss();
+                                // Aquí si necesitas ejecutar algo después de la autorización remota (como habilitar botones de carga), ponlo aquí
+                            });
+                        });
                     }
                     else
                     {
-                        btnValidar.Enabled = true;
-
-                        // Color según status (opcional, pero útil)
-                        Android.Graphics.Color color = resultado.Status switch
-                        {
-                            "Green" => Android.Graphics.Color.ParseColor("#00AA44"),
-                            "Yellow" => Android.Graphics.Color.ParseColor("#FFA500"),
-                            "Red" => Android.Graphics.Color.Red,
-                            _ => Android.Graphics.Color.Gray
-                        };
-
-                        lblEstado.Text = mensaje;
-                        lblEstado.SetTextColor(color);
-
-                        if (mensaje.Contains("FRAUDE"))
-                        {
-                            new Android.App.AlertDialog.Builder(this)
-                                .SetTitle("🚨 FRAUDE DETECTADO")
-                                .SetMessage($"El intento queda registrado.\n\n{mensaje}")
-                                .SetNeutralButton("ENTENDIDO", (s2, e2) => { })
-                                .SetCancelable(false)
-                                .Show();
-                        }
-
-                        txtOTP.Text = "";
-                        txtOTP.RequestFocus();
+                        Toast.MakeText(this, $"✅ Folio {e.EmbFolio} ya fue autorizado", ToastLength.Long).Show();
                     }
                 }
-                catch (Java.Lang.Exception ex)
+                else
                 {
-                    btnValidar.Enabled = true;
-                    lblEstado.Text = $"❌ Error: {ex.Message}";
-                    lblEstado.SetTextColor(Android.Graphics.Color.Red);
+                    // Si es otro folio, solo mostrar un Toast informativo
+                    Toast.MakeText(this, $"📢 Folio {e.EmbFolio} autorizado por {e.SupervisorId}", ToastLength.Short).Show();
                 }
-            };
+            });
         }
+        #endregion
+
+        #endregion
+
+
+        #region ATU OTP Flow - OBSOLETE
         private void EjecutarFlujoOTPOG(
             string motivo, string folioLeido, string fechaLeido,
             string folioAtrasado, string fechaAtrasada,
@@ -9693,6 +9802,7 @@ namespace CargaEmbarques
                 }
             };
         }
+        #endregion
 
         // --- MÉTODOS DE APOYO PARA VALIDACIÓN Y CIERRE DE EMBARQUE ---
 
