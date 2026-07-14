@@ -45,7 +45,7 @@ using AlertDialog = Android.App.AlertDialog;
 
 namespace CargaEmbarques
 {
-    [Activity(Label = "INGRESAR PEDIDO", ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation, ScreenOrientation = ScreenOrientation.Sensor)]
+    [Activity(Label = "INGRESAR PEDIDO", ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation, ScreenOrientation = ScreenOrientation.Portrait)]
     public class CapturarPedido : Activity, ILocationListener
     {
         #region VARIABLES
@@ -276,6 +276,41 @@ namespace CargaEmbarques
             #region PRUEBA CORREO CARGA EXCESIVA
             //string not = setBodyEmail("084451", "06006PM10I");
             //notificarCargaExcesiva.SendMail("jgalvan@mrlucky.com.mx", not, "CARGA EXCESIVA EN ORDEN DE EMBARQUES");
+            #endregion
+            #region ATU SignalR
+            // ═══════════════ INICIALIZACIÓN DE SIGNALR ═══════════════
+            try
+            {
+                if (_signalRService == null)
+                {
+                    var baseUrl = "http://192.168.123.244:83/auth";
+                    _signalRService = new SignalRService(baseUrl);
+
+                    _signalRService.OnFolioAutorizado += OnFolioAutorizadoHandler;
+
+                    _signalRService.OnConnectionStateChanged += (sender, estado) =>
+                    {
+                        RunOnUiThread(() => Toast.MakeText(this, $"SignalR: {estado}", ToastLength.Short).Show());
+                    };
+
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _signalRService.StartAsync();
+                        }
+                        catch (Java.Lang.Exception ex)
+                        {
+                            RunOnUiThread(() => Toast.MakeText(this, $"Error SignalR: {ex.Message}", ToastLength.Long).Show());
+                        }
+                    });
+                }
+            }
+            catch (Java.Lang.Exception ex)
+            {
+                Toast.MakeText(this, "Error init SignalR: " + ex.Message, ToastLength.Long).Show();
+            }
+            // ═══════════════ FIN SIGNALR ═══════════════
             #endregion
             Cajas.FocusChange += (Sender, args) =>
             {
@@ -2059,30 +2094,6 @@ namespace CargaEmbarques
             SetActionBar(toolbar);
             ActionBar.Title = "Capturar Pedido";
             updatePesoPorEjes(Notrailer.Text, fecha.Text, "", "", "", "", pedido.Text);
-
-            #region ATU SignalR
-            // Inicializar SignalR UNA SOLA VEZ al abrir la pantalla
-            if (_signalRService == null)
-            {
-                var baseUrl = "http://192.168.123.244:83/auth";
-                _signalRService = new SignalRService(baseUrl);
-                _signalRService.OnFolioAutorizado += OnFolioAutorizadoHandler; // Suscribirse
-
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await _signalRService.StartAsync();
-                    }
-                    catch (Java.Lang.Exception ex)
-                    {
-                        RunOnUiThread(() =>
-                            Toast.MakeText(this, $"Error SignalR: {ex.Message}", ToastLength.Long).Show());
-                    }
-                });
-            }
-            #endregion
-
         }
 
         #region ACTUALIZA EL PESO POR EJES
@@ -7877,6 +7888,7 @@ namespace CargaEmbarques
                 }
             }
         }
+
         #region METODOS DE CARGA ADICIONAL PARA PRODUCTOS ESPECIALES
         private void Surtir17TermograDirecto()
         {
@@ -9237,6 +9249,7 @@ namespace CargaEmbarques
             {
                 try
                 {
+                    _embFolioActual = pedido.Text.Trim();
                     await _atuService.CrearSolicitudAsync(
                         embFolio: pedido.Text.Trim(),
                         reciboCap: folioLeido.Trim(),
@@ -9295,6 +9308,7 @@ namespace CargaEmbarques
             builder.SetNegativeButton("✕ CANCELAR", (s, e) => { Borrar(); dialog?.Dismiss(); });
 
             dialog = builder.Create();
+            _otpDialog = dialog;
             dialog.Show();
 
             _btnValidar = dialog.GetButton((int)Android.Content.DialogButtonType.Positive);
@@ -9345,6 +9359,7 @@ namespace CargaEmbarques
 
                     await Task.Delay(1000);
                     _otpDialog?.Dismiss();
+                    _embFolioActual = string.Empty;
                 }
                 else
                 {
@@ -9385,6 +9400,40 @@ namespace CargaEmbarques
 
         #region ATU SignalR Event Handler
         // ✅ MANEJADOR ACTUALIZADO: Actualiza el diálogo en lugar de crear uno nuevo
+        private void OnFolioAutorizadoHandlerOG(object sender, FolioAutorizadoEventArgs e)
+        {
+            // Este código se ejecuta en el hilo UI gracias al SynchronizationContext
+
+            // 1. Verificar si el folio autorizado es el que estamos procesando
+            if (_embFolioActual != e.EmbFolio)
+            {
+                // No es el folio actual, ignoramos (pero podrías mostrar un toast general si quieres)
+                return;
+            }
+
+            // 2. Cerrar el diálogo OTP si está abierto
+            if (_otpDialog != null && _otpDialog.IsShowing)
+            {
+                _otpDialog.Dismiss();
+                _otpDialog = null;
+            }
+
+            // 3. Mostrar mensaje de éxito y continuar con el flujo
+            new Android.App.AlertDialog.Builder(this)
+                .SetTitle("✅ AUTORIZACIÓN REMOTA CONFIRMADA")
+                .SetMessage($"El folio {e.EmbFolio} ha sido autorizado por {e.SupervisorId}.\n\nPuedes continuar con el proceso de carga.")
+                .SetPositiveButton("Continuar", (s, args) =>
+                {
+                    // Aquí debes continuar con el flujo normal de carga
+                    // Por ejemplo, llamar al método que ejecuta el siguiente paso después de la autorización.
+
+                })
+                .SetCancelable(false)
+                .Show();
+
+            // 4. Limpiar el folio actual para no reaccionar dos veces
+            _embFolioActual = string.Empty;
+        }
         private void OnFolioAutorizadoHandler(object sender, FolioAutorizadoEventArgs e)
         {
             RunOnUiThread(() =>

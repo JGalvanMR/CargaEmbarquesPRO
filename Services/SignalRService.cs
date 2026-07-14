@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
 using Android.Util;
-using Newtonsoft.Json.Linq; // <-- AGREGADO: Necesario para usar JObject en lugar de dynamic
+using Android.OS;
 
 namespace CargaEmbarques.Services
 {
@@ -10,18 +10,26 @@ namespace CargaEmbarques.Services
     {
         private HubConnection _connection;
         private readonly string _hubUrl;
-        private bool _isStarted = false;
+        private readonly Handler _mainHandler;
 
-        // Evento que se dispara cuando se recibe una autorización remota
         public event EventHandler<FolioAutorizadoEventArgs> OnFolioAutorizado;
-
-        // Evento opcional para cambios de estado de conexión
         public event EventHandler<string> OnConnectionStateChanged;
+
+        // ✅ NUEVO: Clase interna nativa para que System.Text.Json no tenga problemas
+        private class SignalRFolioDto
+        {
+            public string EmbFolio { get; set; }
+            public string BatchId { get; set; }
+            public string SupervisorId { get; set; }
+            public DateTime AuthorizedAt { get; set; }
+            public string Message { get; set; }
+            public string Comments { get; set; }
+        }
 
         public SignalRService(string baseUrl)
         {
-            // baseUrl debe ser la misma que usas en ATUServices (ej. "http://192.168.123.244:83/auth")
             _hubUrl = $"{baseUrl.TrimEnd('/')}/audit-hub";
+            _mainHandler = new Handler(Looper.MainLooper);
         }
 
         public async Task StartAsync()
@@ -42,54 +50,68 @@ namespace CargaEmbarques.Services
                     })
                     .Build();
 
-                // ✅ CORREGIDO: Cambiado de 'dynamic' a 'JObject'
-                _connection.On<JObject>("FolioAutorizado", data =>
+                // ✅ CORREGIDO: Escuchar usando la clase nativa en lugar de JObject
+                _connection.On<SignalRFolioDto>("FolioAutorizado", data =>
                 {
-                    var args = new FolioAutorizadoEventArgs
+                    try
                     {
-                        // ✅ CORREGIDO: Acceder a las propiedades mediante indexadores de JObject
-                        EmbFolio = data["embFolio"]?.ToString() ?? string.Empty,
-                        BatchId = data["batchId"]?.ToString() ?? string.Empty,
-                        SupervisorId = data["supervisorId"]?.ToString() ?? string.Empty,
-                        AuthorizedAt = DateTime.TryParse(data["authorizedAt"]?.ToString(), out DateTime dt) ? dt : DateTime.Now,
-                        Message = data["message"]?.ToString() ?? string.Empty,
-                        Comments = data["comments"]?.ToString() ?? string.Empty
-                    };
+                        Log.Info("SignalR_Carga", $"🔥🔥🔥 MENSAJE CRUDO RECIBIDO. Folio: {data?.EmbFolio}, Supervisor: {data?.SupervisorId}");
 
-                    // Disparar evento en el hilo UI
-                    Android.App.Application.SynchronizationContext.Post(_ =>
+                        var args = new FolioAutorizadoEventArgs
+                        {
+                            EmbFolio = data.EmbFolio ?? string.Empty,
+                            BatchId = data.BatchId ?? string.Empty,
+                            SupervisorId = data.SupervisorId ?? string.Empty,
+                            AuthorizedAt = data.AuthorizedAt,
+                            Message = data.Message ?? string.Empty,
+                            Comments = data.Comments ?? string.Empty
+                        };
+
+                        _mainHandler.Post(() =>
+                        {
+                            Log.Info("SignalR_Carga", "✅ Disparando evento a la UI del diálogo...");
+                            OnFolioAutorizado?.Invoke(this, args);
+                        });
+                    }
+                    catch (Exception ex)
                     {
-                        OnFolioAutorizado?.Invoke(this, args);
-                    }, null);
+                        Log.Error("SignalR_Carga", $"Error procesando DTO: {ex.Message}");
+                    }
                 });
 
-                // Manejar eventos de conexión
+                // Para probar si el celular recibe OTROS eventos (como el del PWA)
+                _connection.On<string>("AuditEvent", rawMessage =>
+                {
+                    Log.Info("SignalR_Carga", $"📡 Evento de Auditoría recibido (crudo): {rawMessage}");
+                });
+
                 _connection.Closed += (error) =>
                 {
-                    OnConnectionStateChanged?.Invoke(this, "Desconectado");
+                    Log.Warn("SignalR_Carga", $"❌ Conexión cerrada. Error: {error?.Message}");
+                    _mainHandler.Post(() => OnConnectionStateChanged?.Invoke(this, "Desconectado"));
                     return Task.CompletedTask;
                 };
 
                 _connection.Reconnecting += (error) =>
                 {
-                    OnConnectionStateChanged?.Invoke(this, "Reconectando...");
+                    _mainHandler.Post(() => OnConnectionStateChanged?.Invoke(this, "Reconectando..."));
                     return Task.CompletedTask;
                 };
 
                 _connection.Reconnected += (connectionId) =>
                 {
-                    OnConnectionStateChanged?.Invoke(this, "Conectado");
+                    _mainHandler.Post(() => OnConnectionStateChanged?.Invoke(this, "Conectado"));
                     return Task.CompletedTask;
                 };
 
                 await _connection.StartAsync();
-                _isStarted = true;
-                Log.Info("SignalR", "Conectado al hub de auditoría");
-                OnConnectionStateChanged?.Invoke(this, "Conectado");
+                Log.Info("SignalR_Carga", "✅ Conectado al hub de auditoría");
+                _mainHandler.Post(() => OnConnectionStateChanged?.Invoke(this, "Conectado"));
             }
             catch (Exception ex)
             {
-                Log.Error("SignalR", $"Error al conectar: {ex.Message}");
+                Log.Error("SignalR_Carga", $"Error al conectar: {ex.Message}");
+                _mainHandler.Post(() => OnConnectionStateChanged?.Invoke(this, $"Error: {ex.Message}"));
                 throw;
             }
         }
@@ -99,7 +121,6 @@ namespace CargaEmbarques.Services
             if (_connection != null && _connection.State == HubConnectionState.Connected)
             {
                 await _connection.StopAsync();
-                _isStarted = false;
             }
         }
 
@@ -107,7 +128,7 @@ namespace CargaEmbarques.Services
 
         public void Dispose()
         {
-            _connection?.DisposeAsync().AsTask().Wait();
+            try { _connection?.DisposeAsync().AsTask().Wait(); } catch { }
         }
     }
 
