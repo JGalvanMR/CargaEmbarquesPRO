@@ -8650,7 +8650,10 @@ namespace CargaEmbarques
                     resultado = mtar.Substring(0, 3); // primeros 3 caracteres
                 }
 
-                mtar = resultado.Trim();
+                if (!string.IsNullOrWhiteSpace(resultado))
+                {
+                    mtar = resultado.Trim();
+                }
 
                 return (V_Recibo, mtar, V_Prd, Mtipo);
             }
